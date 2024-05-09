@@ -35,6 +35,7 @@ class PerspectiveNet(torch.nn.Module):
         self.conn2.bias.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
 
     def eval(self, fen):
+        fen = fen.split(" ")[0]
         stm_features_dense_tensor = torch.zeros(768, device=device)
         nstm_features_dense_tensor = torch.zeros(768, device=device)
 
