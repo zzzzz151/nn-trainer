@@ -60,6 +60,9 @@ class PerspectiveNet(torch.nn.Module):
         return self.forward(stm_features_dense_tensor, nstm_features_dense_tensor)
 
     def save_quantized(self, file_name, QA, QB):
+        QA = float(QA)
+        QB = float(QB)
+
         # Extract weights and biases
         weights1 = self.conn1.weight.detach().cpu().numpy()
         bias1 = self.conn1.bias.detach().cpu().numpy()

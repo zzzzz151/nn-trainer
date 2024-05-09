@@ -10,13 +10,13 @@ from model import PerspectiveNet
 SUPERBATCHES = 0 # 1 superbatch = 100M positions
 HIDDEN_SIZE = 32
 LR = 0.001
-LR_DROP_INTERVAL = 7
+LR_DROP_INTERVAL = 2
 LR_MULTIPLIER = 0.1
-SCALE = 400.0
+SCALE = 400
 WDL = 0.3
 WEIGHT_BIAS_MAX = 1.98
-QA = 255.0
-QB = 64.0
+QA = 255
+QB = 64
 
 if __name__ == "__main__":
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -47,18 +47,18 @@ if __name__ == "__main__":
     net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 
-    for superbatch_idx in range(SUPERBATCHES):
+    for superbatch_num in range(1, SUPERBATCHES + 1):
         superbatch_start_time = time.time()
         superbatch_total_loss = 0
 
         # Drop learning rate
-        if superbatch_idx > 0 and superbatch_idx % LR_DROP_INTERVAL == 0:
+        if superbatch_num > 1 and (superbatch_num - 1) % LR_DROP_INTERVAL == 0:
             LR *= LR_MULTIPLIER
             for param_group in optimizer.param_groups:
                 param_group['lr'] = LR
             print("Dropped LR to {:f}".format(LR))
 
-        for batch_idx in range(BATCHES_PER_SUPERBATCH):
+        for batch_num in range(1, BATCHES_PER_SUPERBATCH + 1):
             dataloader.loadNextBatch()
 
             stm_features_sparse_tensor, nstm_features_sparse_tensor = batch.features_sparse_tensors(device)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 nstm_features_sparse_tensor.to_dense()
             )
 
-            expected = torch.sigmoid(batch.stm_scores_tensor() / SCALE).to(device) 
+            expected = torch.sigmoid(batch.stm_scores_tensor() / float(SCALE)).to(device) 
             if WDL > 0.0: 
                 expected *= (1.0 - WDL) 
                 expected += batch.stm_results_tensor().to(device) * WDL
@@ -82,20 +82,20 @@ if __name__ == "__main__":
             superbatch_total_loss += loss.item()
 
             # Log every N batches
-            if batch_idx == 0 or batch_idx == BATCHES_PER_SUPERBATCH - 1 or (batch_idx+1) % 16 == 0:
-                positions_seen_this_superbatch = (batch_idx+1) * batch.batch_size
+            if batch_num == 1 or batch_num == BATCHES_PER_SUPERBATCH or batch_num % 16 == 0:
+                positions_seen_this_superbatch = batch_num * batch.batch_size
                 positions_per_sec = positions_seen_this_superbatch / (time.time() - superbatch_start_time)
 
                 log = "\rSuperbatch {}/{}, batch {}/{}, superbatch train loss {:.4f}, {} positions/s".format(
-                    superbatch_idx+1, 
+                    superbatch_num,
                     SUPERBATCHES, 
-                    batch_idx+1, 
+                    batch_num,
                     BATCHES_PER_SUPERBATCH, 
-                    superbatch_total_loss / (batch_idx+1),
+                    superbatch_total_loss / batch_num,
                     round(positions_per_sec)
                 )
 
-                if batch_idx == BATCHES_PER_SUPERBATCH - 1:
+                if batch_num == BATCHES_PER_SUPERBATCH:
                     print(log)
                 else:
                     sys.stdout.write(log)
