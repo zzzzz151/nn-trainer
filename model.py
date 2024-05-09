@@ -49,9 +49,6 @@ class PerspectiveNet(torch.nn.Module):
 
                     is_black_piece = char.islower() 
                     piece_color = 1 if is_black_piece else 0
-
-                    #print("activated stm", piece_color * 384 + piece_type * 64 + sq)
-                    #print("activated nstm", (1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56))
                     
                     stm_features_dense_tensor[piece_color * 384 + piece_type * 64 + sq] = 1
                     nstm_features_dense_tensor[(1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56)] = 1
