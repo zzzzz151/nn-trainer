@@ -1,7 +1,8 @@
 import torch
 import numpy as np
 import struct
-from batch import Batch
+
+device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 class PerspectiveNet(torch.nn.Module):
     def __init__(self, hidden_size, weight_bias_max):
@@ -33,7 +34,7 @@ class PerspectiveNet(torch.nn.Module):
         self.conn2.weight.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
         self.conn2.bias.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
 
-    def eval(self, fen, device):
+    def eval(self, fen):
         stm_features_dense_tensor = torch.zeros(768, device=device)
         nstm_features_dense_tensor = torch.zeros(768, device=device)
 

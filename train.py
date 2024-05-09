@@ -18,8 +18,9 @@ WEIGHT_BIAS_MAX = 1.98
 QA = 255
 QB = 64
 
+device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+
 if __name__ == "__main__":
-    device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
 
     dataloader = ctypes.CDLL("./dataloader/dataloader.so")
@@ -61,19 +62,19 @@ if __name__ == "__main__":
         for batch_num in range(1, BATCHES_PER_SUPERBATCH + 1):
             dataloader.loadNextBatch()
 
-            stm_features_sparse_tensor, nstm_features_sparse_tensor = batch.features_sparse_tensors(device)
+            stm_features_sparse_tensor, nstm_features_sparse_tensor = batch.features_sparse_tensors()
 
             prediction = net.forward(
                 stm_features_sparse_tensor.to_dense(), 
                 nstm_features_sparse_tensor.to_dense()
             )
 
-            expected = torch.sigmoid(batch.stm_scores_tensor() / float(SCALE)).to(device) 
+            expected = torch.sigmoid(batch.stm_scores_tensor() / float(SCALE))
             if WDL > 0.0: 
                 expected *= (1.0 - WDL) 
-                expected += batch.stm_results_tensor().to(device) * WDL
+                expected += batch.stm_results_tensor() * WDL
 
-            loss = torch.mean((prediction - expected) ** 2)
+            loss = torch.mean((prediction - expected.to(device)) ** 2)
             loss.backward()
 
             optimizer.step()
@@ -101,7 +102,7 @@ if __name__ == "__main__":
                     sys.stdout.write(log)
                     sys.stdout.flush()  
 
-    print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", device) * SCALE))
+    print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR") * SCALE))
 
     net.save_quantized("net.nnue", QA, QB)
 

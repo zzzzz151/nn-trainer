@@ -2,6 +2,8 @@ import ctypes
 import numpy as np
 import torch
 
+device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+
 class Batch(ctypes.Structure):
     _fields_ = [
         ('batch_size', ctypes.c_uint32),
@@ -22,7 +24,7 @@ class Batch(ctypes.Structure):
             np.ctypeslib.as_array(self.stm_results, shape=(self.batch_size, 1))
         )
 
-    def features_sparse_tensors(self, device):
+    def features_sparse_tensors(self):
         stm_features_indices_tensor = torch.transpose(
             torch.from_numpy(
                 np.ctypeslib.as_array(self.stm_features, shape=(self.num_active_features, 2))
