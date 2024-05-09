@@ -7,13 +7,14 @@ import sys
 from batch import Batch
 from model import PerspectiveNet
 
-SUPERBATCHES = 1 # 1 superbatch = 100M positions
+SUPERBATCHES = 0 # 1 superbatch = 100M positions
 HIDDEN_SIZE = 32
 LR = 0.001
 LR_DROP_INTERVAL = 7
 LR_MULTIPLIER = 0.1
 SCALE = 400.0
 WDL = 0.3
+WEIGHT_BIAS_MAX = 1.98
 QA = 255.0
 QB = 64.0
 
@@ -36,16 +37,14 @@ if __name__ == "__main__":
 
     print("Superbatches:", SUPERBATCHES)
     print("Hidden layer size:", HIDDEN_SIZE)
-    print("LR:", LR)
-    print("LR drop interval:", LR_DROP_INTERVAL)
-    print("LR drop multiplier:", LR_MULTIPLIER)
+    print("LR: start {} multiply by {} every {} superbatches".format(LR, LR_MULTIPLIER, LR_DROP_INTERVAL))
     print("Scale:", SCALE)
     print("WDL:", WDL)
-    print("QA:", QA)
-    print("QB", QB)
+    print("Weight/bias clamp: [{}, {}]".format(-WEIGHT_BIAS_MAX, WEIGHT_BIAS_MAX))
+    print("QA, QB: {}, {}".format(QA, QB))
     print()
 
-    net = PerspectiveNet(HIDDEN_SIZE).to(device)
+    net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 
     for superbatch_idx in range(SUPERBATCHES):

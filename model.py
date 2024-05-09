@@ -3,21 +3,20 @@ import numpy as np
 import struct
 from batch import Batch
 
-WEIGHT_MAX = 1.98
-
 class PerspectiveNet(torch.nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, hidden_size, weight_bias_max):
         super().__init__()
         self.conn1 = torch.nn.Linear(768, hidden_size)
         self.conn2 = torch.nn.Linear(hidden_size * 2, 1)
+        self.weight_bias_max = weight_bias_max
 
         # Random weights and biases
         torch.manual_seed(42)
         with torch.no_grad():
-            self.conn1.weight.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
-            self.conn1.bias.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
-            self.conn2.weight.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
-            self.conn2.bias.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
+            self.conn1.weight.uniform_(-self.weight_bias_max, self.weight_bias_max)
+            self.conn1.bias.uniform_(-self.weight_bias_max, self.weight_bias_max)
+            self.conn2.weight.uniform_(-self.weight_bias_max, self.weight_bias_max)
+            self.conn2.bias.uniform_(-self.weight_bias_max, self.weight_bias_max)
 
     def forward(self, stm_features_dense_tensor, nstm_features_dense_tensor):
         stm_hidden = self.conn1(stm_features_dense_tensor)
@@ -29,10 +28,10 @@ class PerspectiveNet(torch.nn.Module):
         return torch.sigmoid(self.conn2(hidden_layer))
 
     def clamp_weights_biases(self):
-        self.conn1.weight.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
-        self.conn1.bias.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
-        self.conn2.weight.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
-        self.conn2.bias.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
+        self.conn1.weight.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
+        self.conn1.bias.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
+        self.conn2.weight.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
+        self.conn2.bias.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
 
     def eval(self, fen, device):
         stm_features_dense_tensor = torch.zeros(768, device=device)
@@ -49,6 +48,9 @@ class PerspectiveNet(torch.nn.Module):
 
                     is_black_piece = char.islower() 
                     piece_color = 1 if is_black_piece else 0
+
+                    #print("activated stm", piece_color * 384 + piece_type * 64 + sq)
+                    #print("activated nstm", (1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56))
                     
                     stm_features_dense_tensor[piece_color * 384 + piece_type * 64 + sq] = 1
                     nstm_features_dense_tensor[(1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56)] = 1
