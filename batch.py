@@ -22,7 +22,7 @@ class Batch(ctypes.Structure):
             np.ctypeslib.as_array(self.stm_results, shape=(self.batch_size, 1))
         )
 
-    def features_tensors(self, device):
+    def features_sparse_tensors(self, device):
         stm_features_indices_tensor = torch.transpose(
             torch.from_numpy(
                 np.ctypeslib.as_array(self.stm_features, shape=(self.num_active_features, 2))
@@ -41,7 +41,7 @@ class Batch(ctypes.Structure):
 
         ones = torch.ones(self.num_active_features)
 
-        stm_features_tensor = torch.sparse_coo_tensor(
+        stm_features_sparse_tensor = torch.sparse_coo_tensor(
             stm_features_indices_tensor.long(),
             ones,
             (self.batch_size, 768),
@@ -50,7 +50,7 @@ class Batch(ctypes.Structure):
             device=device
         )
 
-        nstm_features_tensor = torch.sparse_coo_tensor(
+        nstm_features_sparse_tensor = torch.sparse_coo_tensor(
             nstm_features_indices_tensor.long(),
             ones,
             (self.batch_size, 768),
@@ -59,4 +59,4 @@ class Batch(ctypes.Structure):
             device=device
         )
 
-        return stm_features_tensor, nstm_features_tensor
+        return stm_features_sparse_tensor, nstm_features_sparse_tensor

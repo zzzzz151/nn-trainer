@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+import struct
 from batch import Batch
 
 WEIGHT_MAX = 1.98
@@ -13,28 +15,28 @@ class PerspectiveNet(torch.nn.Module):
         torch.manual_seed(42)
         with torch.no_grad():
             self.conn1.weight.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
-            self.conn2.weight.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
             self.conn1.bias.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
+            self.conn2.weight.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
             self.conn2.bias.uniform_(-WEIGHT_MAX, WEIGHT_MAX)
 
-    def forward(self, stm_features_tensor, nstm_features_tensor):
-        stm_hidden = self.conn1(stm_features_tensor.to_dense())
-        nstm_hidden = self.conn1(nstm_features_tensor.to_dense())
+    def forward(self, stm_features_dense_tensor, nstm_features_dense_tensor):
+        stm_hidden = self.conn1(stm_features_dense_tensor)
+        nstm_hidden = self.conn1(nstm_features_dense_tensor)
 
-        hidden_layer = torch.cat((stm_hidden, nstm_hidden), dim=1)
+        hidden_layer = torch.cat((stm_hidden, nstm_hidden), dim = len(stm_features_dense_tensor.size()) - 1)
         hidden_layer = torch.pow(torch.clamp(hidden_layer, 0, 1), 2) # screlu activation
 
         return torch.sigmoid(self.conn2(hidden_layer))
 
-    def clamp_weights(self):
+    def clamp_weights_biases(self):
         self.conn1.weight.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
+        self.conn1.bias.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
         self.conn2.weight.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
+        self.conn2.bias.data.clamp_(-WEIGHT_MAX, WEIGHT_MAX)
 
-    def start_pos_eval(self, device):
-        dense_stm_tensor = torch.zeros(768, device=device)
-        dense_nstm_tensor = torch.zeros(768, device=device)
-
-        fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+    def eval(self, fen, device):
+        stm_features_dense_tensor = torch.zeros(768, device=device)
+        nstm_features_dense_tensor = torch.zeros(768, device=device)
 
         for rank_idx, rank in enumerate(fen.split('/')):
             file_idx = 0
@@ -48,15 +50,35 @@ class PerspectiveNet(torch.nn.Module):
                     is_black_piece = char.islower() 
                     piece_color = 1 if is_black_piece else 0
                     
-                    dense_stm_tensor[piece_color * 384 + piece_type * 64 + sq] = 1
-                    dense_nstm_tensor[(1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56)] = 1
+                    stm_features_dense_tensor[piece_color * 384 + piece_type * 64 + sq] = 1
+                    nstm_features_dense_tensor[(1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56)] = 1
                     
                     file_idx += 1
 
-        stm_hidden = self.conn1(dense_stm_tensor)
-        nstm_hidden = self.conn1(dense_nstm_tensor)
+        return self.forward(stm_features_dense_tensor, nstm_features_dense_tensor)
 
-        hidden_layer = torch.cat((stm_hidden, nstm_hidden), dim=0)
-        hidden_layer = torch.pow(torch.clamp(hidden_layer, 0, 1), 2) # screlu activation
+    def save_quantized(self, file_name, QA, QB):
+        # Extract weights and biases
+        weights1 = self.conn1.weight.detach().cpu().numpy()
+        bias1 = self.conn1.bias.detach().cpu().numpy()
+        weights2 = self.conn2.weight.detach().cpu().numpy()
+        bias2 = self.conn2.bias.detach().cpu().numpy()
 
-        return torch.sigmoid(self.conn2(hidden_layer))
+        # Quantize weights and biases
+        weights1_quantized = np.round(weights1 * QA).T.astype(np.int16)
+        bias1_quantized = np.round(bias1 * QA).astype(np.int16)
+        weights2_quantized = np.round(weights2 * QB).astype(np.int16)
+        bias2_quantized = np.round(bias2 * QA * QB).astype(np.int16)
+
+        # Flatten to 1D lists
+        weights1_1d = weights1_quantized.flatten().tolist()
+        bias1_1d = bias1_quantized.flatten().tolist()
+        weights2_1d = weights2_quantized.flatten().tolist()
+        bias2_1d = bias2_quantized.flatten().tolist()
+
+        # Save to binary file
+        with open(file_name, "wb") as bin_file:
+            bin_file.write(struct.pack('<' + 'h' * len(weights1_1d), *weights1_1d))
+            bin_file.write(struct.pack('<' + 'h' * len(bias1_1d), *bias1_1d))
+            bin_file.write(struct.pack('<' + 'h' * len(weights2_1d), *weights2_1d))
+            bin_file.write(struct.pack('<' + 'h' * len(bias2_1d), *bias2_1d))
