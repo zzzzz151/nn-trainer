@@ -24,6 +24,25 @@ class Batch(ctypes.Structure):
             np.ctypeslib.as_array(self.stm_results, shape=(self.batch_size, 1))
         )
 
+    def features_dense_tensors(self):
+        stm_features_dense_tensor = torch.zeros(self.batch_size, 768, device=device)
+        nstm_features_dense_tensor = torch.zeros(self.batch_size, 768, device=device)
+
+        indices_tensor = torch.from_numpy(
+                np.ctypeslib.as_array(self.stm_features, shape=(self.num_active_features, 2))
+            ).int()
+
+        stm_features_dense_tensor[indices_tensor[:, 0], indices_tensor[:, 1]] = 1
+
+        indices_tensor = torch.from_numpy(
+                np.ctypeslib.as_array(self.nstm_features, shape=(self.num_active_features, 2))
+            ).int()
+
+        nstm_features_dense_tensor[indices_tensor[:, 0], indices_tensor[:, 1]] = 1
+
+        return stm_features_dense_tensor, nstm_features_dense_tensor
+
+    """
     def features_sparse_tensors(self):
         stm_features_indices_tensor = torch.transpose(
             torch.from_numpy(
@@ -62,3 +81,4 @@ class Batch(ctypes.Structure):
         )
 
         return stm_features_sparse_tensor, nstm_features_sparse_tensor
+    """

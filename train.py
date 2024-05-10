@@ -69,12 +69,8 @@ if __name__ == "__main__":
 
             optimizer.zero_grad()
             
-            stm_features_sparse_tensor, nstm_features_sparse_tensor = batch.features_sparse_tensors()
-
-            prediction = net.forward(
-                stm_features_sparse_tensor.to_dense(), 
-                nstm_features_sparse_tensor.to_dense()
-            )
+            stm_features_dense_tensor, nstm_features_dense_tensor = batch.features_dense_tensors()
+            prediction = net.forward(stm_features_dense_tensor, nstm_features_dense_tensor)
 
             expected = torch.sigmoid(batch.stm_scores_tensor() / SCALE)
             if WDL > 0.0: 

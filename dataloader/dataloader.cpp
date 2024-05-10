@@ -87,6 +87,7 @@ void loadBatch(u64 threadId) {
         }
 
         // Sort the position's features in ascending order to ensure coalesceness
+        /*
         for (auto i = startNumActiveFeatures * 2 + 1; i < batch->numActiveFeatures * 2; i += 2)
             for (auto j = i + 2; j < batch->numActiveFeatures * 2; j += 2)
             {
@@ -96,6 +97,7 @@ void loadBatch(u64 threadId) {
                 if (batch->nstmFeatures[j] < batch->nstmFeatures[i])
                     std::swap(batch->nstmFeatures[i], batch->nstmFeatures[j]);
             }
+        */
 
         batch->stmScores[entryIdx] = dataEntry.stmScore;
         batch->stmResults[entryIdx] = (float)dataEntry.stmResult / 2.0;

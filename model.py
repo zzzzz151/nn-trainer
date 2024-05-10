@@ -28,11 +28,12 @@ class PerspectiveNet(torch.nn.Module):
             self.conn2.weight.uniform_(-self.weight_bias_max, self.weight_bias_max)
             self.conn2.bias.uniform_(-self.weight_bias_max, self.weight_bias_max)
 
-    def forward(self, stm_features_dense_tensor, nstm_features_dense_tensor):
-        stm_hidden = self.conn1(stm_features_dense_tensor)
-        nstm_hidden = self.conn1(nstm_features_dense_tensor)
+    # The arguments should be dense tensors and not sparse tensors, as the former are way faster
+    def forward(self, stm_features_tensor, nstm_features_tensor):
+        stm_hidden = self.conn1(stm_features_tensor)
+        nstm_hidden = self.conn1(nstm_features_tensor)
 
-        hidden_layer = torch.cat((stm_hidden, nstm_hidden), dim = len(stm_features_dense_tensor.size()) - 1)
+        hidden_layer = torch.cat((stm_hidden, nstm_hidden), dim = len(stm_features_tensor.size()) - 1)
         hidden_layer = self.screlu(hidden_layer)
 
         return self.conn2(hidden_layer)
