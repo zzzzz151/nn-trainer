@@ -35,6 +35,8 @@ extern "C" API void init()
     NUM_BATCHES = NUM_DATA_ENTRIES / BATCH_SIZE;
     std::cout << "Batches: " << NUM_BATCHES << std::endl;
 
+    std::cout << "Threads: " << NUM_THREADS << std::endl;
+
     for (u64 i = 0; i < NUM_THREADS; i++)
         batches.push_back(Batch(BATCH_SIZE));
 }
