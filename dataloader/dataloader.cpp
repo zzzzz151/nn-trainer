@@ -9,7 +9,7 @@
 
 const std::string DATA_FILE_NAME = "dataloader/starzix2B.bf";
 const u64 BATCH_SIZE = 16384;
-const u64 NUM_THREADS = 10;
+const u64 NUM_THREADS = 12;
 
 u64 DATA_FILE_BYTES = 0;
 u64 NUM_DATA_ENTRIES = 0;

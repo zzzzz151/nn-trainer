@@ -10,11 +10,11 @@ from json import JSONEncoder
 from batch import Batch
 from model import PerspectiveNet
 
-SUPERBATCHES = 14 # 1 superbatch = 100M positions
+SUPERBATCHES = 360 # 1 superbatch = 100M positions
 HIDDEN_SIZE = 1024
 LR = 0.001
-LR_DROP_INTERVAL = 7
-LR_MULTIPLIER = 0.1
+LR_DROP_INTERVAL = 120
+LR_MULTIPLIER = 0.2
 SCALE = 400
 WDL = 0.3
 WEIGHT_BIAS_MAX = 1.98
@@ -47,11 +47,11 @@ if __name__ == "__main__":
 
     SCALE = float(SCALE)
 
-    net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
-    optimizer = torch.optim.Adam(net.parameters(), lr=LR)
-
     # 1 superbatch = 100M positions
     BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(dataloader.batchSize()))
+    
+    net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
+    optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 
     for superbatch_num in range(1, SUPERBATCHES + 1):
         superbatch_start_time = time.time()
@@ -90,7 +90,7 @@ if __name__ == "__main__":
             superbatch_total_loss += loss.item()
 
             # Log every N batches
-            if batch_num == 1 or batch_num == BATCHES_PER_SUPERBATCH or batch_num % 16 == 0:
+            if batch_num == 1 or batch_num == BATCHES_PER_SUPERBATCH or batch_num % 32 == 0:
                 positions_seen_this_superbatch = batch_num * batch.batch_size
                 positions_per_sec = positions_seen_this_superbatch / (time.time() - superbatch_start_time)
 
