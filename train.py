@@ -102,7 +102,7 @@ if __name__ == "__main__":
                     sys.stdout.write(log)
                     sys.stdout.flush()  
 
-    print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR") * SCALE))
+    print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR") * float(SCALE)))
 
     net.save_quantized("net.nnue", QA, QB)
 
