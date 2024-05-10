@@ -6,7 +6,8 @@ const std::string DATA_FILE_NAME = "dataloader/sample32M.bf";
 u64 NUM_DATA_ENTRIES = 0;
 u64 NUM_BATCHES = 0;
 
-extern "C" void init() {
+extern "C" void init()
+{
     // open file in binary mode and at the end
     std::ifstream file(DATA_FILE_NAME, std::ios::binary | std::ios::ate);
     assert(file.is_open());
@@ -25,11 +26,13 @@ extern "C" void init() {
 Batch batch = Batch(BATCH_SIZE);
 u64 nextBatchIdx = 0;
 
-extern "C" Batch* batchPtr() {
+extern "C" Batch *batchPtr()
+{
     return &batch;
 }
 
-extern "C" void loadNextBatch() {
+extern "C" void loadNextBatch()
+{
     std::ifstream file(DATA_FILE_NAME, std::ios::binary);
     assert(file.is_open());
     file.seekg(nextBatchIdx * sizeof(DataEntry) * BATCH_SIZE, std::ios::beg);
@@ -43,19 +46,18 @@ extern "C" void loadNextBatch() {
 
     for (int entryIdx = 0; entryIdx < BATCH_SIZE; entryIdx++)
     {
-        file.read((char*)(&dataEntry), sizeof(DataEntry));
+        file.read((char *)(&dataEntry), sizeof(DataEntry));
         auto startNumActiveFeatures = batch.numActiveFeatures;
 
-        while (dataEntry.occ > 0) {
+        while (dataEntry.occ > 0)
+        {
             i16 square = poplsb(dataEntry.occ);
             i16 piece = dataEntry.pieces & 0b1111;
 
             // Assert no out of bounds array access
             assert(batch.numActiveFeatures * 2 + 1 < BATCH_SIZE * 32 * 2);
 
-            batch.stmFeatures[batch.numActiveFeatures * 2] 
-                = batch.nstmFeatures[batch.numActiveFeatures * 2] 
-                = entryIdx;
+            batch.stmFeatures[batch.numActiveFeatures * 2] = batch.nstmFeatures[batch.numActiveFeatures * 2] = entryIdx;
 
             batch.stmFeatures[batch.numActiveFeatures * 2 + 1] = PIECE_TO_FEATURE[piece] + square;
             batch.nstmFeatures[batch.numActiveFeatures * 2 + 1] = PIECE_TO_FEATURE[piece ^ 8] + (square ^ 56);
@@ -72,16 +74,15 @@ extern "C" void loadNextBatch() {
                     std::swap(batch.stmFeatures[i], batch.stmFeatures[j]);
 
                 if (batch.nstmFeatures[j] < batch.nstmFeatures[i])
-                    std::swap(batch.nstmFeatures[i], batch.nstmFeatures[j]);   
+                    std::swap(batch.nstmFeatures[i], batch.nstmFeatures[j]);
             }
 
         batch.stmScores[entryIdx] = dataEntry.stmScore;
         batch.stmResults[entryIdx] = (float)dataEntry.stmResult / 2.0;
     }
-    
+
     nextBatchIdx++;
     if (nextBatchIdx >= NUM_BATCHES) nextBatchIdx = 0;
-
 }
 
 int main()

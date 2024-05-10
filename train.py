@@ -4,10 +4,12 @@ import torch
 import math
 import time
 import sys
+import json
+from json import JSONEncoder
 from batch import Batch
 from model import PerspectiveNet
 
-SUPERBATCHES = 14 # 1 superbatch = 100M positions
+SUPERBATCHES = 1 # 1 superbatch = 100M positions
 HIDDEN_SIZE = 32
 LR = 0.001
 LR_DROP_INTERVAL = 7
@@ -108,6 +110,15 @@ if __name__ == "__main__":
     print("e2e4 eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1") * SCALE))
 
     net.save_quantized("net.nnue", QA, QB)
+
+    class EncodeTensor(JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, torch.Tensor):
+                return obj.cpu().detach().numpy().tolist()
+            return super(EncodeTensor, self).default(obj)
+
+    with open("unquantized.json", 'w') as json_file:
+        json.dump(net.state_dict(), json_file,cls=EncodeTensor)
 
 
 

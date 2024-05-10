@@ -45,7 +45,7 @@ class PerspectiveNet(torch.nn.Module):
 
     def eval(self, fen):
         fen = fen.split(" ")
-        stm = 1 if fen[-5] == "b" else "0"
+        stm = 1 if fen[-5] == "b" else 0
 
         stm_features_dense_tensor = torch.zeros(768, device=device)
         nstm_features_dense_tensor = torch.zeros(768, device=device)
