@@ -23,7 +23,7 @@ extern "C" void init() {
 }
 
 Batch batch = Batch(BATCH_SIZE);
-u64 currentBatchIdx = 0;
+u64 nextBatchIdx = 0;
 
 extern "C" Batch* batchPtr() {
     return &batch;
@@ -32,7 +32,7 @@ extern "C" Batch* batchPtr() {
 extern "C" void loadNextBatch() {
     std::ifstream file(DATA_FILE_NAME, std::ios::binary);
     assert(file.is_open());
-    file.seekg(currentBatchIdx * sizeof(DataEntry) * BATCH_SIZE, std::ios::beg);
+    file.seekg(nextBatchIdx * sizeof(DataEntry) * BATCH_SIZE, std::ios::beg);
 
     batch.numActiveFeatures = 0;
     DataEntry dataEntry;
@@ -79,8 +79,8 @@ extern "C" void loadNextBatch() {
         batch.stmResults[entryIdx] = (float)dataEntry.stmResult / 2.0;
     }
     
-    currentBatchIdx++;
-    if (currentBatchIdx >= NUM_BATCHES) currentBatchIdx = 0;
+    nextBatchIdx++;
+    if (nextBatchIdx >= NUM_BATCHES) nextBatchIdx = 0;
 
 }
 
