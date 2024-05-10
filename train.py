@@ -11,7 +11,7 @@ from batch import Batch
 from model import PerspectiveNet
 
 SUPERBATCHES = 14 # 1 superbatch = 100M positions
-HIDDEN_SIZE = 32
+HIDDEN_SIZE = 1024
 LR = 0.001
 LR_DROP_INTERVAL = 7
 LR_MULTIPLIER = 0.1
@@ -31,11 +31,10 @@ if __name__ == "__main__":
 
     # define dataloader functions return types
     dataloader.init.restype = None # void
-    dataloader.loadNextBatch.restype = None # void
-    dataloader.batchPtr.restype = ctypes.POINTER(Batch)
+    dataloader.batchSize.restype = ctypes.c_uint64
+    dataloader.nextBatch.restype = ctypes.POINTER(Batch)
 
     dataloader.init()
-    batch = dataloader.batchPtr().contents
 
     print("Superbatches:", SUPERBATCHES)
     print("Hidden layer size:", HIDDEN_SIZE)
@@ -52,7 +51,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 
     # 1 superbatch = 100M positions
-    BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(batch.batch_size))
+    BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(dataloader.batchSize()))
 
     for superbatch_num in range(1, SUPERBATCHES + 1):
         superbatch_start_time = time.time()
@@ -66,10 +65,10 @@ if __name__ == "__main__":
             print("Dropped LR to {:f}".format(LR))
 
         for batch_num in range(1, BATCHES_PER_SUPERBATCH + 1):
-            dataloader.loadNextBatch()
+            batch = dataloader.nextBatch().contents
 
             optimizer.zero_grad()
-
+            
             stm_features_sparse_tensor, nstm_features_sparse_tensor = batch.features_sparse_tensors()
 
             prediction = net.forward(

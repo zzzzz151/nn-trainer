@@ -48,11 +48,9 @@ struct Batch {
 
     float *stmScores, *stmResults;
 
-    Batch(int batchSize)
+    Batch(u32 batchSize)
     {
         this->batchSize = batchSize;
-
-        numActiveFeatures = 0;
 
         // Indices of active features
         // array size is * 2 because the indices are (positionIndex, featureIndex)
@@ -64,6 +62,7 @@ struct Batch {
         stmResults = new float[batchSize];
     }
 
+    /*
     ~Batch()
     {
         // RAII! Or use std::unique_ptr<T[]>, but remember that only raw pointers should
@@ -73,6 +72,7 @@ struct Batch {
         delete[] stmScores;
         delete[] stmResults;
     }
+    */
 };
 
 #if defined(__GNUC__) // GCC, Clang, ICC
