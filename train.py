@@ -107,7 +107,7 @@ if __name__ == "__main__":
                     sys.stdout.flush()  
 
     print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") * SCALE))
-    print("e2e4 eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1") * SCALE))
+    print("Endgame pos eval:", int(net.eval("8/8/4R3/3k4/8/2K5/8/8 b - - 0 1") * SCALE))
 
     net.save_quantized("net.nnue", QA, QB)
 
