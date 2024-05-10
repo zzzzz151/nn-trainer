@@ -4,11 +4,20 @@ import struct
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
+class SCReLU(torch.nn.Module):
+    def __init__(self, inplace=False):
+        super().__init__()
+        self.inplace = inplace
+
+    def forward(self, x):
+        return torch.pow(torch.clamp(x, 0, 1), 2)
+
 class PerspectiveNet(torch.nn.Module):
     def __init__(self, hidden_size, weight_bias_max):
         super().__init__()
         self.conn1 = torch.nn.Linear(768, hidden_size)
         self.conn2 = torch.nn.Linear(hidden_size * 2, 1)
+        self.screlu = SCReLU()
         self.weight_bias_max = weight_bias_max
 
         # Random weights and biases
@@ -24,9 +33,9 @@ class PerspectiveNet(torch.nn.Module):
         nstm_hidden = self.conn1(nstm_features_dense_tensor)
 
         hidden_layer = torch.cat((stm_hidden, nstm_hidden), dim = len(stm_features_dense_tensor.size()) - 1)
-        hidden_layer = torch.pow(torch.clamp(hidden_layer, 0, 1), 2) # screlu activation
+        hidden_layer = self.screlu(hidden_layer)
 
-        return torch.sigmoid(self.conn2(hidden_layer))
+        return self.conn2(hidden_layer)
 
     def clamp_weights_biases(self):
         self.conn1.weight.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
@@ -35,11 +44,13 @@ class PerspectiveNet(torch.nn.Module):
         self.conn2.bias.data.clamp_(-self.weight_bias_max, self.weight_bias_max)
 
     def eval(self, fen):
-        fen = fen.split(" ")[0]
+        fen = fen.split(" ")
+        stm = 1 if fen[-5] == "b" else "0"
+
         stm_features_dense_tensor = torch.zeros(768, device=device)
         nstm_features_dense_tensor = torch.zeros(768, device=device)
 
-        for rank_idx, rank in enumerate(fen.split('/')):
+        for rank_idx, rank in enumerate(fen[0].split('/')):
             file_idx = 0
             for char in rank:
                 if char.isdigit():
@@ -50,9 +61,16 @@ class PerspectiveNet(torch.nn.Module):
 
                     is_black_piece = char.islower() 
                     piece_color = 1 if is_black_piece else 0
-                    
-                    stm_features_dense_tensor[piece_color * 384 + piece_type * 64 + sq] = 1
-                    nstm_features_dense_tensor[(1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56)] = 1
+
+                    feature1 = piece_color * 384 + piece_type * 64 + sq
+                    feature2 = (1 - piece_color) * 384 + piece_type * 64 + (sq ^ 56)
+
+                    if stm == 0:
+                        stm_features_dense_tensor[feature1] = 1
+                        nstm_features_dense_tensor[feature2] = 1
+                    else:
+                        stm_features_dense_tensor[feature2] = 1
+                        nstm_features_dense_tensor[feature1] = 1
                     
                     file_idx += 1
 

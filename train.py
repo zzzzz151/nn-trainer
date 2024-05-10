@@ -7,10 +7,10 @@ import sys
 from batch import Batch
 from model import PerspectiveNet
 
-SUPERBATCHES = 0 # 1 superbatch = 100M positions
+SUPERBATCHES = 14 # 1 superbatch = 100M positions
 HIDDEN_SIZE = 32
 LR = 0.001
-LR_DROP_INTERVAL = 2
+LR_DROP_INTERVAL = 7
 LR_MULTIPLIER = 0.1
 SCALE = 400
 WDL = 0.3
@@ -42,6 +42,8 @@ if __name__ == "__main__":
     print("QA, QB: {}, {}".format(QA, QB))
     print()
 
+    SCALE = float(SCALE)
+
     net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 
@@ -69,12 +71,12 @@ if __name__ == "__main__":
                 nstm_features_sparse_tensor.to_dense()
             )
 
-            expected = torch.sigmoid(batch.stm_scores_tensor() / float(SCALE))
+            expected = torch.sigmoid(batch.stm_scores_tensor() / SCALE)
             if WDL > 0.0: 
                 expected *= (1.0 - WDL) 
                 expected += batch.stm_results_tensor() * WDL
 
-            loss = torch.mean((prediction - expected.to(device)) ** 2)
+            loss = torch.mean((torch.sigmoid(prediction) - expected.to(device)) ** 2)
             loss.backward()
 
             optimizer.step()
@@ -102,7 +104,8 @@ if __name__ == "__main__":
                     sys.stdout.write(log)
                     sys.stdout.flush()  
 
-    print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR") * float(SCALE)))
+    print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") * SCALE))
+    print("e2e4 eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1") * SCALE))
 
     net.save_quantized("net.nnue", QA, QB)
 
