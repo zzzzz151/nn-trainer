@@ -33,9 +33,6 @@ if __name__ == "__main__":
     dataloader.init()
     batch = dataloader.batchPtr().contents
 
-    # 1 superbatch = 100M positions
-    BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(batch.batch_size))
-
     print("Superbatches:", SUPERBATCHES)
     print("Hidden layer size:", HIDDEN_SIZE)
     print("LR: start {} multiply by {} every {} superbatches".format(LR, LR_MULTIPLIER, LR_DROP_INTERVAL))
@@ -47,6 +44,9 @@ if __name__ == "__main__":
 
     net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=LR)
+
+    # 1 superbatch = 100M positions
+    BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(batch.batch_size))
 
     for superbatch_num in range(1, SUPERBATCHES + 1):
         superbatch_start_time = time.time()
