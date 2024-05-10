@@ -19,3 +19,6 @@ nets/
 
 *.nnue
 **/*.nnue
+
+*.json
+**/*.json
