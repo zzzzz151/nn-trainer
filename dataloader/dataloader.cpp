@@ -1,7 +1,7 @@
 #include "misc.hpp"
 
+const std::string DATA_FILE_NAME = "dataloader/starzix2B.bf";
 const int BATCH_SIZE = 16384;
-const std::string DATA_FILE_NAME = "dataloader/sample32M.bf";
 
 u64 NUM_DATA_ENTRIES = 0;
 u64 NUM_BATCHES = 0;
