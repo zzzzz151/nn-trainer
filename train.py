@@ -9,7 +9,7 @@ from json import JSONEncoder
 from batch import Batch
 from model import PerspectiveNet
 
-SUPERBATCHES = 1 # 1 superbatch = 100M positions
+SUPERBATCHES = 14 # 1 superbatch = 100M positions
 HIDDEN_SIZE = 32
 LR = 0.001
 LR_DROP_INTERVAL = 7
@@ -65,6 +65,8 @@ if __name__ == "__main__":
 
         for batch_num in range(1, BATCHES_PER_SUPERBATCH + 1):
             dataloader.loadNextBatch()
+
+            optimizer.zero_grad()
 
             stm_features_sparse_tensor, nstm_features_sparse_tensor = batch.features_sparse_tensors()
 
