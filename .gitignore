@@ -4,6 +4,12 @@
 *.dll
 **/*.dll
 
+*.lib
+**/*.lib
+
+*.exp
+**/*.exp
+
 *.exe
 **/*.exe
 

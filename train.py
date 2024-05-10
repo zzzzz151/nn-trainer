@@ -5,6 +5,7 @@ import math
 import time
 import sys
 import json
+import os
 from json import JSONEncoder
 from batch import Batch
 from model import PerspectiveNet
@@ -25,7 +26,8 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 if __name__ == "__main__":
     print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
 
-    dataloader = ctypes.CDLL("./dataloader/dataloader.so")
+    assert os.path.exists("./dataloader/dataloader.dll") or os.path.exists("./dataloader/dataloader.so")
+    dataloader = ctypes.CDLL("./dataloader/dataloader.dll" if os.path.exists("./dataloader/dataloader.dll") else "./dataloader/dataloader.so")
 
     # define dataloader functions return types
     dataloader.init.restype = None # void

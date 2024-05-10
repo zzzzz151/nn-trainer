@@ -1,12 +1,19 @@
 #include "misc.hpp"
 
-const std::string DATA_FILE_NAME = "dataloader/starzix2B.bf";
+// Needed to export functions on Windows
+#ifdef _WIN32
+#   define API __declspec(dllexport)
+#else
+#   define API
+#endif
+
+const std::string DATA_FILE_NAME = "dataloader/sample163840.bf";
 const int BATCH_SIZE = 16384;
 
 u64 NUM_DATA_ENTRIES = 0;
 u64 NUM_BATCHES = 0;
 
-extern "C" void init()
+extern "C" API void init()
 {
     // open file in binary mode and at the end
     std::ifstream file(DATA_FILE_NAME, std::ios::binary | std::ios::ate);
@@ -26,12 +33,12 @@ extern "C" void init()
 Batch batch = Batch(BATCH_SIZE);
 u64 nextBatchIdx = 0;
 
-extern "C" Batch *batchPtr()
+extern "C" API Batch *batchPtr()
 {
     return &batch;
 }
 
-extern "C" void loadNextBatch()
+extern "C" API void loadNextBatch()
 {
     std::ifstream file(DATA_FILE_NAME, std::ios::binary);
     assert(file.is_open());
