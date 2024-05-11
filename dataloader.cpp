@@ -1,13 +1,6 @@
-#include "misc.hpp"
+#include "dataloader.hpp"
 
-// Needed to export functions on Windows
-#ifdef _WIN32
-#   define API __declspec(dllexport)
-#else
-#   define API
-#endif
-
-const std::string DATA_FILE_NAME = "dataloader/starzix2B.bf";
+const std::string DATA_FILE_NAME = "starzix2B.bf";
 const u64 BATCH_SIZE = 16384;
 const u64 NUM_THREADS = 12;
 

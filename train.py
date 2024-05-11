@@ -29,8 +29,8 @@ QB = 64
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 if __name__ == "__main__":
-    assert os.path.exists("./dataloader/dataloader.dll") or os.path.exists("./dataloader/dataloader.so")
-    dataloader = ctypes.CDLL("./dataloader/dataloader.dll" if os.path.exists("./dataloader/dataloader.dll") else "./dataloader/dataloader.so")
+    assert os.path.exists("./dataloader.dll") or os.path.exists("./dataloader.so")
+    dataloader = ctypes.CDLL("./dataloader.dll" if os.path.exists("./dataloader.dll") else "./dataloader.so")
 
     # define dataloader functions return types
     dataloader.init.restype = None # void
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     print("Data entries:", dataloader.numDataEntries())
     print("Batch size:", dataloader.batchSize())
     print("Batches:", dataloader.numBatches())
-    print("Superbatches: {} (save every {})".format(SUPERBATCHES, SAVE_INTERVAL))
+    print("Superbatches: {} (save net every {})".format(SUPERBATCHES, SAVE_INTERVAL))
     print("Threads:", dataloader.numThreads())
     print("LR: start {} multiply by {} every {} superbatches".format(LR, LR_MULTIPLIER, LR_DROP_INTERVAL))
     print("Scale:", SCALE)
@@ -77,7 +77,7 @@ if __name__ == "__main__":
             LR *= LR_MULTIPLIER
             for param_group in optimizer.param_groups:
                 param_group['lr'] = LR
-            print("Dropped LR to {:f}".format(LR))
+            print("LR dropped to {:f}".format(LR))
 
         for batch_num in range(1, BATCHES_PER_SUPERBATCH + 1):
             batch = dataloader.nextBatch().contents

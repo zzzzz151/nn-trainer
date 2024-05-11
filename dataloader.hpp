@@ -17,6 +17,13 @@ using i16 = int16_t;
 using i32 = int32_t;
 using i64 = int64_t;
 
+// Needed to export functions on Windows
+#ifdef _WIN32
+#   define API __declspec(dllexport)
+#else
+#   define API
+#endif
+
 struct DataEntry {
     public:
 
