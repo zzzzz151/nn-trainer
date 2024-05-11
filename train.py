@@ -15,8 +15,11 @@ warnings.filterwarnings("ignore")
 
 NET_NAME = "net"
 HIDDEN_SIZE = 1024
+DATA_FILE_NAME = "starzix2B.bf" # bulletformat
 SUPERBATCHES = 400 # 1 superbatch = 100M positions
-SAVE_INTERVAL = 100
+SAVE_INTERVAL = 100 # save net every SAVE_INTERVAL superbatches
+BATCH_SIZE = 16384
+THREADS = 12
 LR = 0.001
 LR_DROP_INTERVAL = 100
 LR_MULTIPLIER = 0.25
@@ -32,24 +35,24 @@ if __name__ == "__main__":
     assert os.path.exists("./dataloader.dll") or os.path.exists("./dataloader.so")
     dataloader = ctypes.CDLL("./dataloader.dll" if os.path.exists("./dataloader.dll") else "./dataloader.so")
 
-    # define dataloader functions return types
+    # define dataloader functions
     dataloader.init.restype = None # void
+    dataloader.init.argtypes = [ctypes.c_char_p, ctypes.c_uint64, ctypes.c_uint64]
     dataloader.numDataEntries.restype = ctypes.c_uint64
-    dataloader.batchSize.restype = ctypes.c_uint64
-    dataloader.numBatches.restype = ctypes.c_uint64
-    dataloader.numThreads.restype = ctypes.c_uint64
     dataloader.nextBatch.restype = ctypes.POINTER(Batch)
 
-    dataloader.init()
+    dataloader.init(
+        ctypes.c_char_p(DATA_FILE_NAME.encode('utf-8')),
+        BATCH_SIZE, 
+        THREADS)
 
     print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
     print("Net name:", NET_NAME)
     print("Net arch: (768->{})x2->1".format(HIDDEN_SIZE))
-    print("Data entries:", dataloader.numDataEntries())
-    print("Batch size:", dataloader.batchSize())
-    print("Batches:", dataloader.numBatches())
+    print("Data entries: {} ({})".format(dataloader.numDataEntries(), DATA_FILE_NAME))
     print("Superbatches: {} (save net every {})".format(SUPERBATCHES, SAVE_INTERVAL))
-    print("Threads:", dataloader.numThreads())
+    print("Batch size:", BATCH_SIZE)
+    print("Threads:", THREADS)
     print("LR: start {} multiply by {} every {} superbatches".format(LR, LR_MULTIPLIER, LR_DROP_INTERVAL))
     print("Scale:", SCALE)
     print("WDL:", WDL)
@@ -60,7 +63,7 @@ if __name__ == "__main__":
     SCALE = float(SCALE)
 
     # 1 superbatch = 100M positions
-    BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(dataloader.batchSize()))
+    BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(BATCH_SIZE))
 
     if not os.path.exists("nets"):
         os.makedirs("nets")

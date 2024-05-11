@@ -1,11 +1,11 @@
-# nn-trainer
+# NN trainer for [Starzix](https://github.com/zzzzz151/Starzix) engine
 
-# Compile dataloader
+# Usage
 
-**Linux**
+Compile dataloader:
 
-```clang++ -shared -O3 -std=c++20 -march=x86-64-v3 -fPIC -Wunused -Wall -Wextra dataloader.cpp -o dataloader.so```
+- Linux: ```clang++ -shared -O3 -std=c++20 -march=native -fPIC -Wunused -Wall -Wextra dataloader.cpp -o dataloader.so```
 
-**Windows**
+- Windows: ```clang++ -shared -O3 -std=c++20 -march=native -Wunused -Wall -Wextra dataloader.cpp -o dataloader.dll```
 
-```clang++ -shared -O3 -std=c++20 -march=x86-64-v3 -Wunused -Wall -Wextra dataloader.cpp -o dataloader.dll```
+Set parameters in train.py and run train.py

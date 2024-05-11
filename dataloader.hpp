@@ -24,6 +24,7 @@ using i64 = int64_t;
 #   define API
 #endif
 
+// bulletformat
 struct DataEntry {
     public:
 
