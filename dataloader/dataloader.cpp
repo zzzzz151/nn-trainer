@@ -28,21 +28,29 @@ extern "C" API void init()
     DATA_FILE_BYTES = file.tellg();
 
     NUM_DATA_ENTRIES = DATA_FILE_BYTES / sizeof(DataEntry);
-    std::cout << "Data entries: " << NUM_DATA_ENTRIES << std::endl;
 
     assert(NUM_DATA_ENTRIES % BATCH_SIZE == 0);
 
     NUM_BATCHES = NUM_DATA_ENTRIES / BATCH_SIZE;
-    std::cout << "Batches: " << NUM_BATCHES << std::endl;
-
-    std::cout << "Threads: " << NUM_THREADS << std::endl;
 
     for (u64 i = 0; i < NUM_THREADS; i++)
         batches.push_back(Batch(BATCH_SIZE));
 }
 
+extern "C" API u64 numDataEntries() {
+    return NUM_DATA_ENTRIES;
+}
+
 extern "C" API u64 batchSize() { 
     return BATCH_SIZE; 
+}
+
+extern "C" API u64 numBatches() {
+    return NUM_BATCHES;
+}
+
+extern "C" API u64 numThreads() { 
+    return NUM_THREADS;
 }
 
 void loadBatch(u64 threadId) {

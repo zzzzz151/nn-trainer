@@ -6,15 +6,20 @@ import time
 import sys
 import json
 import os
+import warnings
 from json import JSONEncoder
 from batch import Batch
 from model import PerspectiveNet
 
-SUPERBATCHES = 360 # 1 superbatch = 100M positions
+warnings.filterwarnings("ignore")
+
+NET_NAME = "net"
 HIDDEN_SIZE = 1024
+SUPERBATCHES = 400 # 1 superbatch = 100M positions
+SAVE_INTERVAL = 100
 LR = 0.001
-LR_DROP_INTERVAL = 120
-LR_MULTIPLIER = 0.2
+LR_DROP_INTERVAL = 100
+LR_MULTIPLIER = 0.25
 SCALE = 400
 WDL = 0.3
 WEIGHT_BIAS_MAX = 1.98
@@ -24,20 +29,27 @@ QB = 64
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 if __name__ == "__main__":
-    print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
-
     assert os.path.exists("./dataloader/dataloader.dll") or os.path.exists("./dataloader/dataloader.so")
     dataloader = ctypes.CDLL("./dataloader/dataloader.dll" if os.path.exists("./dataloader/dataloader.dll") else "./dataloader/dataloader.so")
 
     # define dataloader functions return types
     dataloader.init.restype = None # void
+    dataloader.numDataEntries.restype = ctypes.c_uint64
     dataloader.batchSize.restype = ctypes.c_uint64
+    dataloader.numBatches.restype = ctypes.c_uint64
+    dataloader.numThreads.restype = ctypes.c_uint64
     dataloader.nextBatch.restype = ctypes.POINTER(Batch)
 
     dataloader.init()
 
-    print("Superbatches:", SUPERBATCHES)
-    print("Hidden layer size:", HIDDEN_SIZE)
+    print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
+    print("Net name:", NET_NAME)
+    print("Net arch: (768->{})x2->1".format(HIDDEN_SIZE))
+    print("Data entries:", dataloader.numDataEntries())
+    print("Batch size:", dataloader.batchSize())
+    print("Batches:", dataloader.numBatches())
+    print("Superbatches: {} (save every {})".format(SUPERBATCHES, SAVE_INTERVAL))
+    print("Threads:", dataloader.numThreads())
     print("LR: start {} multiply by {} every {} superbatches".format(LR, LR_MULTIPLIER, LR_DROP_INTERVAL))
     print("Scale:", SCALE)
     print("WDL:", WDL)
@@ -49,6 +61,9 @@ if __name__ == "__main__":
 
     # 1 superbatch = 100M positions
     BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(dataloader.batchSize()))
+
+    if not os.path.exists("nets"):
+        os.makedirs("nets")
     
     net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=LR)
@@ -105,19 +120,27 @@ if __name__ == "__main__":
                     sys.stdout.write(log)
                     sys.stdout.flush()  
 
+        # Save net
+        if superbatch_num % SAVE_INTERVAL == 0:
+            file_name = "nets/{}-{}".format(NET_NAME, superbatch_num)
+
+            torch.save(net.state_dict(), file_name + ".pth")
+
+            net.save_quantized(file_name + ".nnue", QA, QB)
+
+            class EncodeTensor(JSONEncoder):
+                def default(self, obj):
+                    if isinstance(obj, torch.Tensor):
+                        return obj.cpu().detach().numpy().tolist()
+                    return super(EncodeTensor, self).default(obj)
+
+            with open(file_name + ".json", 'w') as json_file:
+                json.dump(net.state_dict(), json_file, cls=EncodeTensor)
+
+            print("Net saved")
+
     print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") * SCALE))
-    print("Endgame pos eval:", int(net.eval("8/8/4R3/3k4/8/2K5/8/8 b - - 0 1") * SCALE))
-
-    net.save_quantized("net.nnue", QA, QB)
-
-    class EncodeTensor(JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, torch.Tensor):
-                return obj.cpu().detach().numpy().tolist()
-            return super(EncodeTensor, self).default(obj)
-
-    with open("unquantized.json", 'w') as json_file:
-        json.dump(net.state_dict(), json_file,cls=EncodeTensor)
+    print("e2e4 eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1") * SCALE))
 
 
 
