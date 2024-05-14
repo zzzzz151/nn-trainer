@@ -4,29 +4,32 @@ import struct
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-class SCReLU(torch.nn.Module):
-    def __init__(self, inplace=False):
-        super().__init__()
-        self.inplace = inplace
-
-    def forward(self, x):
-        return torch.pow(torch.clamp(x, 0, 1), 2)
-
 class PerspectiveNet(torch.nn.Module):
     def __init__(self, hidden_size, weight_bias_max):
         super().__init__()
         self.conn1 = torch.nn.Linear(768, hidden_size)
         self.conn2 = torch.nn.Linear(hidden_size * 2, 1)
-        self.screlu = SCReLU()
-        self.weight_bias_max = weight_bias_max
+        self.weight_bias_max = float(weight_bias_max)
 
         # Random weights and biases
         torch.manual_seed(42)
         with torch.no_grad():
-            self.conn1.weight.uniform_(-self.weight_bias_max, self.weight_bias_max)
-            self.conn1.bias.uniform_(-self.weight_bias_max, self.weight_bias_max)
-            self.conn2.weight.uniform_(-self.weight_bias_max, self.weight_bias_max)
-            self.conn2.bias.uniform_(-self.weight_bias_max, self.weight_bias_max)
+            self.conn1.weight.uniform_(-0.1, 0.1)
+            self.conn1.bias.uniform_(-0.1, 0.1)
+            self.conn2.weight.uniform_(-0.1, 0.1)
+            self.conn2.bias.uniform_(-0.1, 0.1)
+
+            """
+            # ~99.7% of values are within 3 standard deviations of mean
+            mean = 0.0
+            standard_deviation = self.weight_bias_max / 3.0 
+
+            self.conn1.weight.normal_(mean, standard_deviation)
+            self.conn1.bias.normal_(mean, standard_deviation)
+            self.conn2.weight.normal_(mean, standard_deviation)
+            self.conn2.bias.normal_(mean, standard_deviation)
+            self.clamp_weights_biases()
+            """
 
     # The arguments should be dense tensors and not sparse tensors, as the former are way faster
     def forward(self, stm_features_tensor, nstm_features_tensor):
@@ -34,7 +37,7 @@ class PerspectiveNet(torch.nn.Module):
         nstm_hidden = self.conn1(nstm_features_tensor)
 
         hidden_layer = torch.cat((stm_hidden, nstm_hidden), dim = len(stm_features_tensor.size()) - 1)
-        hidden_layer = self.screlu(hidden_layer)
+        hidden_layer = torch.pow(torch.clamp(hidden_layer, 0, 1), 2) # SCReLU activation
 
         return self.conn2(hidden_layer)
 

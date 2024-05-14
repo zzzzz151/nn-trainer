@@ -13,19 +13,19 @@ from model import PerspectiveNet
 
 warnings.filterwarnings("ignore")
 
-NET_NAME = "net"
+NET_NAME = "net1024"
 HIDDEN_SIZE = 1024
 DATA_FILE_NAME = "starzix2B.bf" # bulletformat
 SUPERBATCHES = 400 # 1 superbatch = 100M positions
-SAVE_INTERVAL = 100 # save net every SAVE_INTERVAL superbatches
+SAVE_INTERVAL = 50 # save net every SAVE_INTERVAL superbatches
 BATCH_SIZE = 16384
 THREADS = 12
 LR = 0.001
-LR_DROP_INTERVAL = 100
-LR_MULTIPLIER = 0.25
+LR_DROP_INTERVAL = 150
+LR_MULTIPLIER = 0.2
 SCALE = 400
 WDL = 0.3
-WEIGHT_BIAS_MAX = 1.98
+WEIGHT_BIAS_MAX = 2.0
 QA = 255
 QB = 64
 
@@ -69,8 +69,10 @@ if __name__ == "__main__":
         os.makedirs("nets")
     
     net = PerspectiveNet(HIDDEN_SIZE, WEIGHT_BIAS_MAX).to(device)
-    optimizer = torch.optim.Adam(net.parameters(), lr=LR)
 
+    #optimizer = torch.optim.Adam(net.parameters(), lr=LR)
+    optimizer = torch.optim.AdamW(net.parameters(), lr=LR, weight_decay=0.01)
+    
     for superbatch_num in range(1, SUPERBATCHES + 1):
         superbatch_start_time = time.time()
         superbatch_total_loss = 0
