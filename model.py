@@ -1,6 +1,4 @@
 import torch
-import numpy as np
-import struct
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -18,18 +16,6 @@ class PerspectiveNet(torch.nn.Module):
             self.conn1.bias.uniform_(-0.1, 0.1)
             self.conn2.weight.uniform_(-0.1, 0.1)
             self.conn2.bias.uniform_(-0.1, 0.1)
-
-            """
-            # ~99.7% of values are within 3 standard deviations of mean
-            mean = 0.0
-            standard_deviation = self.weight_bias_max / 3.0 
-
-            self.conn1.weight.normal_(mean, standard_deviation)
-            self.conn1.bias.normal_(mean, standard_deviation)
-            self.conn2.weight.normal_(mean, standard_deviation)
-            self.conn2.bias.normal_(mean, standard_deviation)
-            self.clamp_weights_biases()
-            """
 
     # The arguments should be dense tensors and not sparse tensors, as the former are way faster
     def forward(self, stm_features_tensor, nstm_features_tensor):
@@ -79,32 +65,3 @@ class PerspectiveNet(torch.nn.Module):
                     file_idx += 1
 
         return self.forward(stm_features_dense_tensor, nstm_features_dense_tensor)
-
-    def save_quantized(self, file_name, QA, QB):
-        QA = float(QA)
-        QB = float(QB)
-
-        # Extract weights and biases
-        weights1 = self.conn1.weight.detach().cpu().numpy()
-        bias1 = self.conn1.bias.detach().cpu().numpy()
-        weights2 = self.conn2.weight.detach().cpu().numpy()
-        bias2 = self.conn2.bias.detach().cpu().numpy()
-
-        # Quantize weights and biases
-        weights1_quantized = np.round(weights1 * QA).T.astype(np.int16)
-        bias1_quantized = np.round(bias1 * QA).astype(np.int16)
-        weights2_quantized = np.round(weights2 * QB).astype(np.int16)
-        bias2_quantized = np.round(bias2 * QA * QB).astype(np.int16)
-
-        # Flatten to 1D lists
-        weights1_1d = weights1_quantized.flatten().tolist()
-        bias1_1d = bias1_quantized.flatten().tolist()
-        weights2_1d = weights2_quantized.flatten().tolist()
-        bias2_1d = bias2_quantized.flatten().tolist()
-
-        # Save to binary file
-        with open(file_name, "wb") as bin_file:
-            bin_file.write(struct.pack('<' + 'h' * len(weights1_1d), *weights1_1d))
-            bin_file.write(struct.pack('<' + 'h' * len(bias1_1d), *bias1_1d))
-            bin_file.write(struct.pack('<' + 'h' * len(weights2_1d), *weights2_1d))
-            bin_file.write(struct.pack('<' + 'h' * len(bias2_1d), *bias2_1d))

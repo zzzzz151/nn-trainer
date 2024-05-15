@@ -4,10 +4,8 @@ import torch
 import math
 import time
 import sys
-import json
 import os
 import warnings
-from json import JSONEncoder
 from batch import Batch
 from model import PerspectiveNet
 
@@ -26,8 +24,6 @@ LR_MULTIPLIER = 0.2
 SCALE = 400
 WDL = 0.3
 WEIGHT_BIAS_MAX = 2.0
-QA = 255
-QB = 64
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -57,7 +53,6 @@ if __name__ == "__main__":
     print("Scale:", SCALE)
     print("WDL:", WDL)
     print("Weight/bias clamp: [{}, {}]".format(-WEIGHT_BIAS_MAX, WEIGHT_BIAS_MAX))
-    print("QA, QB: {}, {}".format(QA, QB))
     print()
 
     SCALE = float(SCALE)
@@ -125,23 +120,9 @@ if __name__ == "__main__":
                     sys.stdout.write(log)
                     sys.stdout.flush()  
 
-        # Save net
+        # Save net as .pt (pytorch file)
         if superbatch_num % SAVE_INTERVAL == 0:
-            file_name = "nets/{}-{}".format(NET_NAME, superbatch_num)
-
-            torch.save(net.state_dict(), file_name + ".pth")
-
-            net.save_quantized(file_name + ".nnue", QA, QB)
-
-            class EncodeTensor(JSONEncoder):
-                def default(self, obj):
-                    if isinstance(obj, torch.Tensor):
-                        return obj.cpu().detach().numpy().tolist()
-                    return super(EncodeTensor, self).default(obj)
-
-            with open(file_name + ".json", 'w') as json_file:
-                json.dump(net.state_dict(), json_file, cls=EncodeTensor)
-
+            torch.save(net.state_dict(), "nets/{}-{}.pt".format(NET_NAME, superbatch_num))
             print("Net saved")
 
     print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") * SCALE))
