@@ -9,3 +9,5 @@ Compile dataloader:
 - Windows: ```clang++ -shared -O3 -std=c++20 -march=native -Wunused -Wall -Wextra dataloader.cpp -o dataloader.dll```
 
 Set parameters in train.py and run train.py
+
+A trained net can be quantized by setting the parameters in quantize.py and running quantize.py
