@@ -42,7 +42,7 @@ if __name__ == "__main__":
     weights2_1d = weights2_quantized.flatten().tolist()
     bias2_1d = bias2_quantized.flatten().tolist()
 
-    out_file_name = PT_FILE_NAME[:-3] + ".nnue"
+    out_file_name = PT_FILE_NAME[:-3] + ".bin"
 
     # Save to binary file
     with open(out_file_name, "wb") as bin_file:

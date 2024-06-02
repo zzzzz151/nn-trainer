@@ -30,7 +30,7 @@ LR_DROP_INTERVAL = 1
 LR_MULTIPLIER = 0.99
 
 SCALE = 400
-WDL = 0.3
+WDL = 0.0
 WEIGHT_BIAS_MAX = 2.0
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -116,12 +116,11 @@ if __name__ == "__main__":
             stm_features_dense_tensor, nstm_features_dense_tensor = batch.features_dense_tensors()
             prediction = net.forward(stm_features_dense_tensor, nstm_features_dense_tensor)
 
-            expected = torch.sigmoid(batch.stm_scores_tensor() / SCALE)
-            if WDL > 0.0: 
-                expected *= (1.0 - WDL) 
-                expected += batch.stm_results_tensor() * WDL
+            expected = torch.sigmoid(batch.stm_scores_tensor() / SCALE) * (1.0 - WDL)
+            expected += batch.stm_results_tensor() * WDL
+            expected = expected.to(device)
 
-            loss = torch.mean((torch.sigmoid(prediction) - expected.to(device)) ** 2)
+            loss = torch.mean((torch.sigmoid(prediction) - expected) ** 2)
             loss.backward()
 
             optimizer.step()
