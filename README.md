@@ -1,13 +1,20 @@
 # NN trainer for [Starzix](https://github.com/zzzzz151/Starzix) engine
 
-# Usage
+Compile data converter:
+
+```clang++ -O3 -std=c++20 -march=native -Wunused -Wall -Wextra dataloader/convert.cpp -o dataloader/convert[.exe]```
+
+Convert txt data to binary format:
+
+```./dataloader/convert[.exe] dataloader/data.txt```
 
 Compile dataloader:
 
-- Linux: ```clang++ -shared -O3 -std=c++20 -march=native -fPIC -Wunused -Wall -Wextra dataloader.cpp -o dataloader.so```
+- Linux: ```clang++ -shared -O3 -std=c++20 -march=native -fPIC -Wunused -Wall -Wextra dataloader/dataloader.cpp -o dataloader/dataloader.so```
 
-- Windows: ```clang++ -shared -O3 -std=c++20 -march=native -Wunused -Wall -Wextra dataloader.cpp -o dataloader.dll```
+- Windows: ```clang++ -shared -O3 -std=c++20 -march=native -Wunused -Wall -Wextra dataloader/dataloader.cpp -o dataloader/dataloader.dll```
 
-Set parameters in train.py and run train.py
+Set training parameters in train.py and run it
 
-A trained net can be quantized by setting the parameters in quantize.py and running quantize.py
+To quantize a net, set parameters in quantize.py and run it
+
