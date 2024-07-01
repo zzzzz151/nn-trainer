@@ -1,18 +1,10 @@
 # NN trainer for [Starzix](https://github.com/zzzzz151/Starzix) engine
 
-Compile data converter:
+Have clang++ installed and run `make` to compile data converter and data loader
 
-```clang++ -O3 -std=c++20 -march=native -Wunused -Wall -Wextra dataloader/convert.cpp -o dataloader/convert[.exe]```
+Convert txt data in the format `fen | score | result`, where `score` is from white pov and `result` is `0.0` if white lost, `0.5` if draw, `1.0` if white won, to binary format used by the trainer:
 
-Convert txt data to binary format:
-
-```./dataloader/convert[.exe] dataloader/data.txt```
-
-Compile dataloader:
-
-- Linux: ```clang++ -shared -O3 -std=c++20 -march=native -fPIC -Wunused -Wall -Wextra dataloader/dataloader.cpp -o dataloader/dataloader.so```
-
-- Windows: ```clang++ -shared -O3 -std=c++20 -march=native -Wunused -Wall -Wextra dataloader/dataloader.cpp -o dataloader/dataloader.dll```
+`dataloader/convert[.exe] dataloader/data.txt`
 
 Set training parameters in train.py and run it
 

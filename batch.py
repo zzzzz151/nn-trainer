@@ -17,26 +17,14 @@ class Batch(ctypes.Structure):
     def features_dense_tensor(self):
         features_tensor = torch.zeros(self.batch_size, 768, device=device)
 
-        indices_tensor = torch.from_numpy(
-                np.ctypeslib.as_array(self.active_features, shape=(self.num_active_features, 2))
-            ).int()
+        arr = np.ctypeslib.as_array(self.active_features, shape=(self.num_active_features, 2))
+        indices_tensor = torch.from_numpy(arr).int()
 
         features_tensor[indices_tensor[:, 0], indices_tensor[:, 1]] = 1
 
         return features_tensor
 
-    def is_white_stm_tensor(self):
-        return torch.from_numpy(
-                np.ctypeslib.as_array(self.is_white_stm, shape=(self.batch_size, 1))
-            ).to(device)
-
-    def stm_scores_tensor(self):
-        return torch.from_numpy(
-                np.ctypeslib.as_array(self.stm_scores, shape=(self.batch_size, 1))
-            ).to(device)
-
-    def stm_results_tensor(self):
-        return torch.from_numpy(
-                np.ctypeslib.as_array(self.stm_results, shape=(self.batch_size, 1))
-            ).to(device)
+    def to_tensor(self, field: str):
+        arr = np.ctypeslib.as_array(getattr(self, field), shape=(self.batch_size, 1))
+        return torch.from_numpy(arr).to(device)
 

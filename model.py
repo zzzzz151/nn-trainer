@@ -3,7 +3,7 @@ import torch
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 class PerspectiveNet768x2(torch.nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, hidden_size: int):
         super().__init__()
 
         self.HIDDEN_SIZE = hidden_size
@@ -24,7 +24,7 @@ class PerspectiveNet768x2(torch.nn.Module):
             self.hidden_to_out.bias.uniform_(-0.1, 0.1)
 
     # The arguments should be dense tensors and not sparse tensors, as the former are way faster
-    def forward(self, features_tensor, is_white_stm_tensor):
+    def forward(self, features_tensor: torch.Tensor, is_white_stm_tensor: torch.Tensor):
         white_hidden = self.features_to_hidden_white_stm(features_tensor)
         black_hidden = self.features_to_hidden_black_stm(features_tensor)
 
@@ -38,7 +38,7 @@ class PerspectiveNet768x2(torch.nn.Module):
 
         return self.hidden_to_out(hidden_layer)
 
-    def clamp_weights_biases(self, maximum):
+    def clamp_weights_biases(self, maximum: float):
         assert maximum > 0.0
 
         self.features_to_hidden_white_stm.weight.data.clamp_(-maximum, maximum)

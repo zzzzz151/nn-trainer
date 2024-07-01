@@ -9,7 +9,6 @@ import warnings
 from batch import Batch
 from model import PerspectiveNet768x2
 
-warnings.filterwarnings("ignore")
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 NET_NAME = "net768x2"
@@ -20,9 +19,9 @@ net = PerspectiveNet768x2(hidden_size=1024).to(device)
 # 1 superbatch = 100M positions
 START_SUPERBATCH = 1 # set to 1 if not resuming training
 END_SUPERBATCH = 400
-SAVE_INTERVAL = 100 # save net every SAVE_INTERVAL superbatches
+SAVE_INTERVAL = 40 # save net every SAVE_INTERVAL superbatches
 
-DATA_FILE_NAME = "dataloader/2B.bin"
+DATA_FILE_NAME = "dataloader/2B.bin" # .bin
 BATCH_SIZE = 16384
 THREADS = 12
 
@@ -33,7 +32,7 @@ LR_MULTIPLIER = 0.99
 
 SCALE = 400
 WDL = 0.0
-WEIGHT_BIAS_MAX = 2.0
+MAX_WEIGHT_BIAS = 2.0
 
 if __name__ == "__main__":
     assert NET_NAME != ""
@@ -47,7 +46,7 @@ if __name__ == "__main__":
     assert LR > 0.0 and LR_DROP_INTERVAL > 0 and LR_MULTIPLIER > 0.0
     assert SCALE > 0
     assert WDL >= 0.0 and WDL <= 1.0
-    assert WEIGHT_BIAS_MAX > 0.0
+    assert MAX_WEIGHT_BIAS > 0.0
 
     # load dataloader exe/binary
     dll = "./dataloader/dataloader.dll"
@@ -70,7 +69,7 @@ if __name__ == "__main__":
 
     print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
     print("Net name:", NET_NAME)
-    print("Net arch: (768 -> {})x2 -> 1".format(net.HIDDEN_SIZE))
+    print("Net arch: (768x2 -> {})x2 -> 1".format(net.HIDDEN_SIZE))
     print("Superbatches: {} to {} (save net every {})".format(START_SUPERBATCH, END_SUPERBATCH, SAVE_INTERVAL))
     print("Data entries: {} ({})".format(dataloader.numDataEntries(), DATA_FILE_NAME))
     print("Batch size:", BATCH_SIZE)
@@ -78,7 +77,7 @@ if __name__ == "__main__":
     print("LR: start {:.20f} multiply by {} every {} superbatches".format(LR, LR_MULTIPLIER, LR_DROP_INTERVAL))
     print("Scale:", SCALE)
     print("WDL:", WDL)
-    print("Weight/bias clamp: [{}, {}]".format(-WEIGHT_BIAS_MAX, WEIGHT_BIAS_MAX))
+    print("Weights/biases clipping: [{}, {}]".format(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS))
     print()
 
     # Load net if resuming training
@@ -109,17 +108,17 @@ if __name__ == "__main__":
 
             optimizer.zero_grad()
             
-            prediction = net.forward(batch.features_dense_tensor(), batch.is_white_stm_tensor())
+            prediction = net.forward(batch.features_dense_tensor(), batch.to_tensor("is_white_stm"))
 
-            expected = torch.sigmoid(batch.stm_scores_tensor() / float(SCALE)) * (1.0 - WDL)
-            expected += batch.stm_results_tensor() * WDL
+            expected = torch.sigmoid(batch.to_tensor("stm_scores") / float(SCALE)) * (1.0 - WDL)
+            expected += batch.to_tensor("stm_results") * WDL
 
             loss = torch.mean((torch.sigmoid(prediction) - expected) ** 2)
             loss.backward()
 
             optimizer.step()
 
-            net.clamp_weights_biases(WEIGHT_BIAS_MAX)
+            net.clamp_weights_biases(MAX_WEIGHT_BIAS)
 
             superbatch_total_loss += loss.item()
 

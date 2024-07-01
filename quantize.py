@@ -4,7 +4,6 @@ import struct
 import warnings
 from model import *
 
-warnings.filterwarnings("ignore")
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 PT_FILE_NAME = "nets/net768x2-400.pt"
@@ -15,7 +14,7 @@ QB = 64
 
 if __name__ == "__main__":
     print(PT_FILE_NAME)
-    print("Net arch: (768 -> {})x2 -> 1".format(net.HIDDEN_SIZE))
+    print("Net arch: (768x2 -> {})x2 -> 1".format(net.HIDDEN_SIZE))
     print("QA, QB: {}, {}".format(QA, QB))
 
     QA = float(QA)
