@@ -51,6 +51,7 @@ class PerspectiveNet768x2(torch.nn.Module):
         self.hidden_to_out.bias.data.clamp_(-maximum, maximum)
 
     def eval(self, fen: str):
+        fen = fen.strip()
         fen_split_spaces = fen.split(" ")
         features_tensor = torch.zeros(768, device=device)
 

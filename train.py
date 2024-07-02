@@ -12,7 +12,7 @@ from model import PerspectiveNet768x2
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 NET_NAME = "net768x2"
-NET_TO_LOAD = None # set to a .pt file to resume training, else set to None or ""
+CHECKPOINT_TO_LOAD = None # set to a .pt file to resume training, else set to None or ""
 
 net = PerspectiveNet768x2(hidden_size=1024).to(device)
 
@@ -36,8 +36,8 @@ MAX_WEIGHT_BIAS = 2.0
 
 if __name__ == "__main__":
     assert NET_NAME != ""
-    if NET_TO_LOAD != None and NET_TO_LOAD != "": assert os.path.exists(NET_TO_LOAD)
-    assert(START_SUPERBATCH == 1 if NET_TO_LOAD == None or NET_TO_LOAD == "" else START_SUPERBATCH > 1)
+    if CHECKPOINT_TO_LOAD != None and CHECKPOINT_TO_LOAD != "": assert os.path.exists(CHECKPOINT_TO_LOAD)
+    assert(START_SUPERBATCH == 1 if CHECKPOINT_TO_LOAD == None or CHECKPOINT_TO_LOAD == "" else START_SUPERBATCH > 1)
     assert END_SUPERBATCH >= START_SUPERBATCH
     assert SAVE_INTERVAL > 0
     assert os.path.exists(DATA_FILE_NAME)
@@ -80,59 +80,84 @@ if __name__ == "__main__":
     print("Weights/biases clipping: [{}, {}]".format(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS))
     print()
 
-    # Load net if resuming training
-    if NET_TO_LOAD != None and NET_TO_LOAD != "":
-        net.load_state_dict(torch.load(NET_TO_LOAD))
-        print("Loaded net", NET_TO_LOAD)
-        print()
-
     # 1 superbatch = 100M positions
     BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(BATCH_SIZE))
 
     #optimizer = torch.optim.Adam(net.parameters(), lr=LR)
     optimizer = torch.optim.AdamW(net.parameters(), lr=LR, weight_decay=0.01)
 
+    scaler = torch.cuda.amp.GradScaler()
+
+    # Load checkpoint if resuming training
+    if CHECKPOINT_TO_LOAD != None and CHECKPOINT_TO_LOAD != "":
+        print("Resuming training from checkpoint", CHECKPOINT_TO_LOAD)
+
+        checkpoint = torch.load(CHECKPOINT_TO_LOAD, 
+            map_location = lambda storage, 
+            loc: storage.cuda(torch.cuda.current_device()))
+
+        net.load_state_dict(checkpoint["model"])
+
+        optimizer.load_state_dict(checkpoint["optimizer"])
+
+        assert(len(optimizer.param_groups) == 1 and "lr" in optimizer.param_groups[0])
+        optimizer.param_groups[0]["lr"] = LR
+
+        assert optimizer.param_groups[0]["weight_decay"] == 0.01
+
+        scaler.load_state_dict(checkpoint["scaler"])
+
     for superbatch_num in range(START_SUPERBATCH, END_SUPERBATCH + 1):
         superbatch_start_time = time.time()
-        superbatch_total_loss = 0
+        superbatch_total_loss = 0.0
+        superbatch_total_scaled_loss = 0.0
 
         # Drop learning rate
         if superbatch_num > START_SUPERBATCH and (superbatch_num - START_SUPERBATCH) % LR_DROP_INTERVAL == 0:
             LR *= LR_MULTIPLIER
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = LR
+            assert(len(optimizer.param_groups) == 1 and "lr" in optimizer.param_groups[0])
+            optimizer.param_groups[0]["lr"] = LR
             print("LR dropped to {:.20f}".format(LR))
 
         for batch_num in range(1, BATCHES_PER_SUPERBATCH + 1):
             batch = dataloader.nextBatch().contents
 
-            optimizer.zero_grad()
-            
-            prediction = net.forward(batch.features_dense_tensor(), batch.to_tensor("is_white_stm"))
+            optimizer.zero_grad(set_to_none=True)
 
-            expected = torch.sigmoid(batch.to_tensor("stm_scores") / float(SCALE)) * (1.0 - WDL)
-            expected += batch.to_tensor("stm_results") * WDL
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                prediction = net.forward(batch.features_dense_tensor(), batch.to_tensor("is_white_stm"))
+                assert prediction.dtype is torch.bfloat16
 
-            loss = torch.mean((torch.sigmoid(prediction) - expected) ** 2)
-            loss.backward()
+                expected = torch.sigmoid(batch.to_tensor("stm_scores") / float(SCALE)) * (1.0 - WDL)
+                expected += batch.to_tensor("stm_results") * WDL
+                assert expected.dtype is torch.float32
 
-            optimizer.step()
-
-            net.clamp_weights_biases(MAX_WEIGHT_BIAS)
+                loss = torch.mean((torch.sigmoid(prediction) - expected) ** 2)
+                assert loss.dtype is torch.float32
 
             superbatch_total_loss += loss.item()
+
+            scaled_loss = scaler.scale(loss)
+            scaled_loss.backward()            
+            superbatch_total_scaled_loss += scaled_loss.item()
+
+            scaler.step(optimizer)
+            scaler.update()
+
+            net.clamp_weights_biases(MAX_WEIGHT_BIAS)
 
             # Log every N batches
             if batch_num == 1 or batch_num == BATCHES_PER_SUPERBATCH or batch_num % 32 == 0:
                 positions_seen_this_superbatch = batch_num * batch.batch_size
                 positions_per_sec = positions_seen_this_superbatch / (time.time() - superbatch_start_time)
 
-                log = "\rSuperbatch {}/{}, batch {}/{}, superbatch train loss {:.4f}, {} positions/s".format(
+                log = "\rSuperbatch {}/{}, batch {}/{}, superbatch train loss {:.4f} ({} scaled), {} positions/s".format(
                     superbatch_num,
                     END_SUPERBATCH, 
                     batch_num,
                     BATCHES_PER_SUPERBATCH, 
                     superbatch_total_loss / batch_num,
+                    round(superbatch_total_scaled_loss / batch_num),
                     round(positions_per_sec)
                 )
 
@@ -142,13 +167,18 @@ if __name__ == "__main__":
                     sys.stdout.write(log)
                     sys.stdout.flush()  
 
-        # Save net as .pt (pytorch file)
+        # Save checkpoint as .pt (pytorch file)
         if (superbatch_num - START_SUPERBATCH + 1) % SAVE_INTERVAL == 0 or superbatch_num == END_SUPERBATCH:
 
-            if not os.path.exists("nets"):
-                os.makedirs("nets")
+            checkpoint = {"model": net.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "scaler": scaler.state_dict()
+            }
 
-            pt_file_name = "nets/{}-{}.pt".format(NET_NAME, superbatch_num)
-            torch.save(net.state_dict(), pt_file_name)
-            print("Net saved", pt_file_name)
+            if not os.path.exists("checkpoints"):
+                os.makedirs("checkpoints")
+
+            pt_file_name = "checkpoints/{}-{}.pt".format(NET_NAME, superbatch_num)
+            torch.save(checkpoint, pt_file_name)
+            print("Checkpoint saved", pt_file_name)
 

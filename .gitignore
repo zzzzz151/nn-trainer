@@ -20,7 +20,6 @@ __pycache__/
 **/*.exe
 
 dataloader/convert
-dataloader/convert.exe
 
 *.bf
 **/*.bf
@@ -33,6 +32,8 @@ dataloader/convert.exe
 
 nets
 nets/
+checkpoints
+checkpoints/
 
 *.nnue
 **/*.nnue

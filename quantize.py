@@ -6,7 +6,7 @@ from model import *
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-PT_FILE_NAME = "nets/net768x2-400.pt"
+PT_FILE_NAME = "checkpoints/net768x2-400.pt"
 net = PerspectiveNet768x2(hidden_size=1024).to(device)
 
 QA = 255
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     QA = float(QA)
     QB = float(QB)
 
-    net.load_state_dict(torch.load(PT_FILE_NAME))
+    net.load_state_dict(torch.load(PT_FILE_NAME)["model"])
 
     # Extract weights and biases
     weights1 = net.features_to_hidden_white_stm.weight.detach().cpu().numpy()
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     ]
 
     for fen in FENS:
-        print("{}: {}".format(fen, int(net.eval(fen) * 400)))
+        print("{ " + "\"{}\", {}".format(fen, int(net.eval(fen) * 400)) + " },")
 
 
 
