@@ -94,7 +94,8 @@ if __name__ == "__main__":
 
         checkpoint = torch.load(CHECKPOINT_TO_LOAD, 
             map_location = lambda storage, 
-            loc: storage.cuda(torch.cuda.current_device()))
+            loc: storage.cuda(torch.cuda.current_device()),
+            weights_only=False)
 
         net.load_state_dict(checkpoint["model"])
 
@@ -106,6 +107,8 @@ if __name__ == "__main__":
         assert optimizer.param_groups[0]["weight_decay"] == 0.01
 
         scaler.load_state_dict(checkpoint["scaler"])
+
+    net = torch.compile(net)
 
     for superbatch_num in range(START_SUPERBATCH, END_SUPERBATCH + 1):
         superbatch_start_time = time.time()
