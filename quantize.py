@@ -20,7 +20,8 @@ if __name__ == "__main__":
     QA = float(QA)
     QB = float(QB)
 
-    net.load_state_dict(torch.load(PT_FILE_NAME)["model"])
+    net = torch.compile(net)
+    net.load_state_dict(torch.load(PT_FILE_NAME, weights_only=False)["model"])
 
     # Extract weights and biases
     weights1 = net.features_to_hidden_white_stm.weight.detach().cpu().numpy()
@@ -69,6 +70,8 @@ if __name__ == "__main__":
         weights3 = struct.unpack(f'<{2 * net.HIDDEN_SIZE}h', bin_file.read(2 * net.HIDDEN_SIZE * 2))
         bias3 = struct.unpack('<1h', bin_file.read(1 * 2))
 
+    net = PerspectiveNet768x2(net.HIDDEN_SIZE).to(device)
+    
     net.features_to_hidden_white_stm.weight.data = torch.tensor(np.array(weights1).reshape(768, net.HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
     net.features_to_hidden_black_stm.weight.data = torch.tensor(np.array(weights2).reshape(768, net.HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
     net.features_to_hidden_white_stm.bias.data = torch.tensor(np.array(biases1) / QA, dtype=torch.float32, device=device)
