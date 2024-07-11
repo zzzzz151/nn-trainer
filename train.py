@@ -135,7 +135,7 @@ if __name__ == "__main__":
                 expected += batch.to_tensor("stm_results") * WDL
                 assert expected.dtype is torch.float32
 
-                loss = torch.mean((torch.sigmoid(prediction) - expected) ** 2)
+                loss = torch.pow(torch.abs(torch.sigmoid(prediction) - expected), 2.5).mean()
                 assert loss.dtype is torch.float32
 
             superbatch_total_loss += loss.item()
