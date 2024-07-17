@@ -6,7 +6,7 @@ Convert txt data in the format `fen | score | result`, where `score` is from whi
 
 `dataloader/convert[.exe] dataloader/data.txt`
 
-Set training parameters in train.py and run it
+To train a net, set settings in settings.py and run train.py
 
-To quantize a net, set parameters in quantize.py and run it
+To quantize a net, set QA and QB in quantize.py and run it
 

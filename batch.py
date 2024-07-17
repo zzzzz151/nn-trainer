@@ -1,21 +1,20 @@
+from settings import *
 import ctypes
 import numpy as np
 import torch
 
-device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-
 class Batch(ctypes.Structure):
     _fields_ = [
-        ('batch_size', ctypes.c_uint32),
         ('num_active_features', ctypes.c_uint32),
         ('active_features', ctypes.POINTER(ctypes.c_int16)),
         ('is_white_stm', ctypes.POINTER(ctypes.c_bool)),
         ('stm_scores', ctypes.POINTER(ctypes.c_float)),
-        ('stm_results', ctypes.POINTER(ctypes.c_float))
+        ('stm_results', ctypes.POINTER(ctypes.c_float)),
+        ('output_buckets', ctypes.POINTER(ctypes.c_uint8))
     ]
 
     def features_dense_tensor(self):
-        features_tensor = torch.zeros(self.batch_size, 768, device=device)
+        features_tensor = torch.zeros(BATCH_SIZE, 768, device=device)
 
         arr = np.ctypeslib.as_array(self.active_features, shape=(self.num_active_features, 2))
         indices_tensor = torch.from_numpy(arr).int()
@@ -24,7 +23,7 @@ class Batch(ctypes.Structure):
 
         return features_tensor
 
-    def to_tensor(self, field: str):
-        arr = np.ctypeslib.as_array(getattr(self, field), shape=(self.batch_size, 1))
-        return torch.from_numpy(arr).to(device)
+def to_tensor(x):
+    arr = np.ctypeslib.as_array(x, shape=(BATCH_SIZE, 1))
+    return torch.from_numpy(arr).to(device)
 

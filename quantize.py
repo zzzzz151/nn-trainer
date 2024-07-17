@@ -1,90 +1,111 @@
+from settings import *
+from model import *
 import torch
 import numpy as np
 import struct
 import warnings
-from model import *
-
-device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-
-PT_FILE_NAME = "checkpoints/net768x2-400.pt"
-net = PerspectiveNet768x2(hidden_size=1024).to(device)
 
 QA = 255
 QB = 64
 
 if __name__ == "__main__":
-    print(PT_FILE_NAME)
-    print("Net arch: (768x2 -> {})x2 -> 1".format(net.HIDDEN_SIZE))
+    print(CHECKPOINT_TO_LOAD)
+    print("Net arch: (768x2 -> {})x2 -> {}".format(HIDDEN_SIZE, OUTPUT_BUCKETS))
     print("QA, QB: {}, {}".format(QA, QB))
 
-    QA = float(QA)
-    QB = float(QB)
+    assert CHECKPOINT_TO_LOAD != None and os.path.exists(CHECKPOINT_TO_LOAD)
 
+    net = PerspectiveNet768x2().to(device)
     net = torch.compile(net)
-    net.load_state_dict(torch.load(PT_FILE_NAME, weights_only=False)["model"])
 
-    # Extract weights and biases
-    weights1 = net.features_to_hidden_white_stm.weight.detach().cpu().numpy()
-    weights2 = net.features_to_hidden_black_stm.weight.detach().cpu().numpy()
-    biases1 = net.features_to_hidden_white_stm.bias.detach().cpu().numpy()
-    biases2 = net.features_to_hidden_black_stm.bias.detach().cpu().numpy()
-    weights3 = net.hidden_to_out.weight.detach().cpu().numpy()
-    bias3 = net.hidden_to_out.bias.detach().cpu().numpy()
+    checkpoint = torch.load(CHECKPOINT_TO_LOAD, weights_only=False)
+    net.load_state_dict(checkpoint["model"])
 
-    # Quantize weights and biases
-    weights1_quantized = np.round(weights1 * QA).T.astype(np.int16)
-    weights2_quantized = np.round(weights2 * QA).T.astype(np.int16)
-    biases1_quantized = np.round(biases1 * QA).astype(np.int16)
-    biases2_quantized = np.round(biases2 * QA).astype(np.int16)
-    weights3_quantized = np.round(weights3 * QB).astype(np.int16)
-    bias3_quantized = np.round(bias3 * QA * QB).astype(np.int16)
+    def quantized(x, quant_factor):
+        return np.round(x.detach().cpu().numpy() * float(quant_factor)).astype(np.int16)
 
-    # Flatten to 1D lists
-    weights1_1d = weights1_quantized.flatten().tolist()
-    weights2_1d = weights2_quantized.flatten().tolist()
-    biases1_1d = biases1_quantized.flatten().tolist()
-    biases2_1d = biases2_quantized.flatten().tolist()
-    weights3_1d = weights3_quantized.flatten().tolist()
-    bias3_1d = bias3_quantized.flatten().tolist()
-
-    out_file_name = PT_FILE_NAME[:-3] + ".bin"
+    out_file_name = CHECKPOINT_TO_LOAD[:-3] + ".bin"
 
     # Save to binary file
     with open(out_file_name, "wb") as bin_file:
-        bin_file.write(struct.pack('<' + 'h' * len(weights1_1d), *weights1_1d))
-        bin_file.write(struct.pack('<' + 'h' * len(weights2_1d), *weights2_1d))
-        bin_file.write(struct.pack('<' + 'h' * len(biases1_1d), *biases1_1d))
-        bin_file.write(struct.pack('<' + 'h' * len(biases2_1d), *biases2_1d))
-        bin_file.write(struct.pack('<' + 'h' * len(weights3_1d), *weights3_1d))
-        bin_file.write(struct.pack('<' + 'h' * len(bias3_1d), *bias3_1d))
+        # Feature weights
+        bin_file.write(np.stack(
+            (quantized(net.features_to_hidden_white_stm.weight.data.T, QA), 
+            quantized(net.features_to_hidden_black_stm.weight.data.T, QA)),
+            axis=0)
+            .tobytes()
+        )
+
+        # Hidden biases
+        bin_file.write(np.stack(
+            (quantized(net.features_to_hidden_white_stm.bias.data, QA), 
+            quantized(net.features_to_hidden_black_stm.bias.data, QA)), 
+            axis=0)
+            .tobytes()
+        )
+
+        # Output weights
+        bin_file.write(
+            quantized(net.hidden_to_out.weight.data, QB)
+            .reshape((OUTPUT_BUCKETS, 2, HIDDEN_SIZE))
+            .tobytes()
+        )
+
+        # Output biases
+        bin_file.write(quantized(net.hidden_to_out.bias.data, QA * QB).tobytes())
 
     print(out_file_name)
 
-    # Print eval quantized
+    # Load quantized net into pytorch
+
+    def dequantized(x, quant_factor):
+        return x.astype(np.float32) / float(quant_factor)
+
+    net = PerspectiveNet768x2().to(device)
 
     with open(out_file_name, "rb") as bin_file:
-        weights1 = struct.unpack(f'<{768 * net.HIDDEN_SIZE}h', bin_file.read(768 * net.HIDDEN_SIZE * 2))
-        weights2 = struct.unpack(f'<{768 * net.HIDDEN_SIZE}h', bin_file.read(768 * net.HIDDEN_SIZE * 2))
-        biases1 = struct.unpack(f'<{net.HIDDEN_SIZE}h', bin_file.read(net.HIDDEN_SIZE * 2))
-        biases2 = struct.unpack(f'<{net.HIDDEN_SIZE}h', bin_file.read(net.HIDDEN_SIZE * 2))
-        weights3 = struct.unpack(f'<{2 * net.HIDDEN_SIZE}h', bin_file.read(2 * net.HIDDEN_SIZE * 2))
-        bias3 = struct.unpack('<1h', bin_file.read(1 * 2))
+        # Feature weights
 
-    net = PerspectiveNet768x2(net.HIDDEN_SIZE).to(device)
+        feature_weights = np.frombuffer(bin_file.read(2 * 768 * HIDDEN_SIZE * 2), dtype=np.int16).reshape(2, 768, HIDDEN_SIZE)
+
+        net.features_to_hidden_white_stm.weight.data = torch.tensor(
+            dequantized(feature_weights[0].T, QA), dtype=torch.float32, device=device
+        )
+
+        net.features_to_hidden_black_stm.weight.data = torch.tensor(
+            dequantized(feature_weights[1].T, QA), dtype=torch.float32, device=device
+        )
+        
+        # Hidden biases
+
+        hidden_biases = np.frombuffer(bin_file.read(2 * HIDDEN_SIZE * 2), dtype=np.int16).reshape(2, HIDDEN_SIZE)
+
+        net.features_to_hidden_white_stm.bias.data = torch.tensor(
+            dequantized(hidden_biases[0], QA), dtype=torch.float32, device=device
+        )
+            
+        net.features_to_hidden_black_stm.bias.data = torch.tensor(
+            dequantized(hidden_biases[1], QA), dtype=torch.float32, device=device
+        )
+        
+        # Output weights
+        output_weights = np.frombuffer(bin_file.read(OUTPUT_BUCKETS * 2 * HIDDEN_SIZE * 2), dtype=np.int16)
+        output_weights = dequantized(output_weights.reshape(OUTPUT_BUCKETS, HIDDEN_SIZE * 2), QB)
+        net.hidden_to_out.weight.data = torch.tensor(output_weights, dtype=torch.float32, device=device)
+        
+        # Output biases
+        output_biases = np.frombuffer(bin_file.read(OUTPUT_BUCKETS * 2), dtype=np.int16)
+        net.hidden_to_out.bias.data = torch.tensor(dequantized(output_biases, QA * QB), dtype=torch.float32, device=device)
+
+    # Print some evals with quantized net
     
-    net.features_to_hidden_white_stm.weight.data = torch.tensor(np.array(weights1).reshape(768, net.HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
-    net.features_to_hidden_black_stm.weight.data = torch.tensor(np.array(weights2).reshape(768, net.HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
-    net.features_to_hidden_white_stm.bias.data = torch.tensor(np.array(biases1) / QA, dtype=torch.float32, device=device)
-    net.features_to_hidden_black_stm.bias.data = torch.tensor(np.array(biases2) / QA, dtype=torch.float32, device=device)
-    net.hidden_to_out.weight.data = torch.tensor(np.array(weights3).reshape(1, 2 * net.HIDDEN_SIZE) / QB, dtype=torch.float32, device=device)
-    net.hidden_to_out.bias.data = torch.tensor(np.array(bias3) / (QA * QB), dtype=torch.float32, device=device)
-
-    # Print some evals
+    def eval_quantized(fen: str):
+        return int(net.eval(fen) * float(SCALE))
 
     print()
-    print("Start pos eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") * 400))
-    print("e2e4 eval:", int(net.eval("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1") * 400))
-    print("e2e4 g8f6 eval:", int(net.eval("rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2") * 400))
+    print("Start pos eval:", eval_quantized("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
+    print("e2e4 eval:", eval_quantized("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"))
+    print("e2e4 g8f6 eval:", eval_quantized("rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2"))
 
     # Moves in "r3k2b/6P1/8/1pP5/8/8/4P3/4K2R w Kq b6 0 1"
     FENS = [
@@ -117,7 +138,7 @@ if __name__ == "__main__":
     ]
 
     for fen in FENS:
-        print("{ " + "\"{}\", {}".format(fen, int(net.eval(fen) * 400)) + " },")
+        print("{ " + "\"{}\", {}".format(fen, eval_quantized(fen)) + " },")
 
 
 

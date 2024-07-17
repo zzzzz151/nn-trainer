@@ -7,29 +7,31 @@
 #include <fstream>
 #include <thread>
 
-// These 5 constants are set in init(), which is called in train.py
+// These 6 constants are set in init(), which is called in train.py
 std::string DATA_FILE_NAME;
 u64 DATA_FILE_BYTES = 0;
 u64 NUM_DATA_ENTRIES = 0;
 u64 BATCH_SIZE = 0;
 u64 NUM_THREADS = 0;
+u8 NUM_OUTPUT_BUCKETS = 0;
 
 std::vector<Batch> gBatches; // NUM_THREADS batches
 u64 gNextBatchIdx = 0; // 0 to NUM_THREADS-1
 u64 gDataFilePos = 0;
 
-extern "C" API void init(const char* dataFileName, u64 batchSize, u64 numThreads)
+extern "C" API void init(const char* dataFileName, u32 batchSize, u8 numThreads, u8 numOutputBuckets)
 {
     DATA_FILE_NAME = (std::string)dataFileName;
     BATCH_SIZE = batchSize;
     NUM_THREADS = numThreads;
+    NUM_OUTPUT_BUCKETS = numOutputBuckets;
 
     // open file in binary mode and at the end
     std::ifstream dataFile(DATA_FILE_NAME, std::ios::binary | std::ios::ate);
     assert(dataFile.is_open());
 
     DATA_FILE_BYTES = dataFile.tellg();
-    NUM_DATA_ENTRIES = DATA_FILE_BYTES / sizeof(DataEntry);
+    NUM_DATA_ENTRIES = DATA_FILE_BYTES / (u64)sizeof(DataEntry);
 
     assert(NUM_DATA_ENTRIES % BATCH_SIZE == 0);
 
@@ -38,10 +40,9 @@ extern "C" API void init(const char* dataFileName, u64 batchSize, u64 numThreads
 }
 
 void loadBatch(u64 threadId) {
-
     // Open file at correct position
 
-    u64 dataFilePos = gDataFilePos + sizeof(DataEntry) * BATCH_SIZE * threadId;
+    u64 dataFilePos = gDataFilePos + (u64)sizeof(DataEntry) * BATCH_SIZE * threadId;
 
     if (dataFilePos >= DATA_FILE_BYTES) 
         dataFilePos -= DATA_FILE_BYTES;
@@ -53,7 +54,7 @@ void loadBatch(u64 threadId) {
     // Fill the batch gBatches[threadId]
 
     DataEntry dataEntry;
-    Batch *batch = &gBatches[threadId];
+    Batch* batch = &gBatches[threadId];
     batch->numActiveFeatures = 0;
 
     for (u64 entryIdx = 0; entryIdx < BATCH_SIZE; entryIdx++)
@@ -63,6 +64,7 @@ void loadBatch(u64 threadId) {
         batch->isWhiteStm[entryIdx] = dataEntry.whiteToMove;
         batch->stmScores[entryIdx] = dataEntry.stmScore;
         batch->stmResults[entryIdx] = (float)dataEntry.stmResult / 2.0;
+        batch->outputBuckets[entryIdx] = (std::popcount(dataEntry.occupancy) - 1) / (32 / NUM_OUTPUT_BUCKETS);
 
         while (dataEntry.occupancy > 0)
         {
@@ -81,10 +83,6 @@ void loadBatch(u64 threadId) {
     }
 }
 
-extern "C" API u64 numDataEntries() {
-    return NUM_DATA_ENTRIES;
-}
-
 extern "C" API Batch* nextBatch()
 {
     if (gNextBatchIdx == 0 || gNextBatchIdx >= NUM_THREADS)
@@ -97,9 +95,10 @@ extern "C" API Batch* nextBatch()
 
         // Wait for the threads
         for (auto &thread : threads) 
-            thread.join();
+            if (thread.joinable())
+                thread.join();
 
-        gDataFilePos += sizeof(DataEntry) * BATCH_SIZE * NUM_THREADS;
+        gDataFilePos += (u64)sizeof(DataEntry) * BATCH_SIZE * NUM_THREADS;
 
         if (gDataFilePos >= DATA_FILE_BYTES) 
             gDataFilePos -= DATA_FILE_BYTES;
