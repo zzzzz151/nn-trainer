@@ -19,5 +19,4 @@ else
 endif
 
 all:
-	$(COMPILER) $(CXXFLAGS_CONVERTER) dataloader/convert.cpp -o dataloader/convert$(CONVERTER_SUFFIX)
-	$(COMPILER) $(CXXFLAGS_DATALOADER) dataloader/dataloader.cpp -o dataloader/dataloader$(DATALOADER_SUFFIX)
+	$(COMPILER) $(CXXFLAGS_DATALOADER) dataloader.cpp -o dataloader$(DATALOADER_SUFFIX)

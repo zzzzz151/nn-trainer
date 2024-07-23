@@ -48,7 +48,7 @@ void loadBatch(u64 threadId) {
         dataFilePos -= DATA_FILE_BYTES;
 
     std::ifstream dataFile(DATA_FILE_NAME, std::ios::binary);
-    assert(dataFile.is_open());
+    assert(dataFile && dataFile.is_open());
     dataFile.seekg(dataFilePos, std::ios::beg);
 
     // Fill the batch gBatches[threadId]
@@ -63,12 +63,16 @@ void loadBatch(u64 threadId) {
 
         batch->isWhiteStm[entryIdx] = dataEntry.whiteToMove;
         batch->stmScores[entryIdx] = dataEntry.stmScore;
-        batch->stmResults[entryIdx] = (float)dataEntry.stmResult / 2.0;
+        batch->stmResults[entryIdx] = float(dataEntry.stmResult + 1) / 2.0;
         batch->outputBuckets[entryIdx] = (std::popcount(dataEntry.occupancy) - 1) / (32 / NUM_OUTPUT_BUCKETS);
+
+        // HM (Horizontal mirroring)
+        // If our king is on right side of board, mirror all pieces along vertical axis
+        u8 mirror = dataEntry.ourKingSquare % 8 > 3 ? 7 : 0;
 
         while (dataEntry.occupancy > 0)
         {
-            i16 square = poplsb(dataEntry.occupancy);
+            i16 square = poplsb(dataEntry.occupancy) ^ mirror;
             bool isWhitePiece = dataEntry.pieces & 0b1;
             i16 pieceType = (dataEntry.pieces & 0b1110) >> 1;
 

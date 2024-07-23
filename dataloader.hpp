@@ -40,17 +40,20 @@ inline u8 poplsb(u64 &bitboard)
 
 struct DataEntry {
     public:
+
     bool whiteToMove;
     u64 occupancy;
 
     // 4 bits per piece for a max of 32 pieces
-    // lsb is isWhitePiece
+    // lsb is isWhitePiece, other 3 bits is piece type
     u128 pieces;
 
-    i16 stmScore;
-    u8 stmResult; // 0 = stm lost, 1 = draw, 2 = stm won
+    u8 ourKingSquare, theirKingSquare;
 
-    std::array<u8, 4> extra; // padding to ensure 32 bytes
+    i16 stmScore;
+    i8 stmResult; // -1, 0, 1
+
+    std::array<u8, 2> extra; // padding to ensure 32 bytes
 
 } __attribute__((packed));
 
@@ -60,13 +63,14 @@ struct Batch {
     public:
 
     u32 numActiveFeatures = 0;
-    i16 *activeFeatures;
+    i16* activeFeatures;
     
-    bool *isWhiteStm;
+    bool* isWhiteStm;
     
-    float *stmScores, *stmResults;
+    float* stmScores;
+    float* stmResults;
 
-    u8 *outputBuckets;
+    u8* outputBuckets;
 
     Batch(u32 batchSize)
     {

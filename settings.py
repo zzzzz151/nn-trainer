@@ -14,7 +14,7 @@ START_SUPERBATCH = 1 # set to 1 if not resuming training
 END_SUPERBATCH = 400
 SAVE_INTERVAL = 100 # save net every SAVE_INTERVAL superbatches
 
-DATA_FILE_NAME = "dataloader/2B.bin" # .bin
+DATA_FILE_NAME = "2B.bin" # .bin
 BATCH_SIZE = 16384
 THREADS = 12
 
