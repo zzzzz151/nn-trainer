@@ -1,6 +1,6 @@
 # NN trainer for [Starzix](https://github.com/zzzzz151/Starzix) engine
 
-Have clang++ installed and run `make` to compile data loader
+Have clang++ installed and run `make CXX=clang++` to compile data loader
 
 The binary data format used by the trainer is `DataEntry` in `dataloader.hpp`
 
