@@ -18,6 +18,7 @@ using i16 = int16_t;
 using i32 = int32_t;
 using i64 = int64_t;
 
+constexpr int WHITE = 0, BLACK = 1;
 constexpr int PAWN = 0, KNIGHT = 1, BISHOP = 2, ROOK = 3, QUEEN = 4, KING = 5;
 
 // Needed to export functions on Windows
@@ -45,10 +46,10 @@ struct DataEntry {
     u64 occupancy;
 
     // 4 bits per piece for a max of 32 pieces
-    // lsb is isWhitePiece, other 3 bits is piece type
+    // lsb is piece color, other 3 bits is piece type
     u128 pieces;
 
-    u8 ourKingSquare, theirKingSquare;
+    u8 whiteKingSquare, blackKingSquare;
 
     i16 stmScore;
     i8 stmResult; // -1, 0, 1
@@ -62,10 +63,9 @@ static_assert(sizeof(DataEntry) == 32); // 32 bytes
 struct Batch {
     public:
 
-    u32 numActiveFeaturesWhiteStm = 0;
-    i16* activeFeaturesWhiteStm;
-    
-    u32 numActiveFeaturesBlackStm = 0;
+    u32 numActiveFeatures= 0;
+
+    i16* activeFeaturesWhiteStm;    
     i16* activeFeaturesBlackStm;
 
     bool* isWhiteStm;

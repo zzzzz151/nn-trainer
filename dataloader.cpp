@@ -55,7 +55,16 @@ void loadBatch(u64 threadId) {
 
     DataEntry dataEntry;
     Batch* batch = &gBatches[threadId];
-    batch->numActiveFeaturesWhiteStm = batch->numActiveFeaturesBlackStm = 0;
+    batch->numActiveFeatures = 0;
+
+    auto feature = [](int pieceColor, int pieceType, int square, int kingSquare) -> int 
+    {
+        // HM (Horizontal mirroring)
+        // If king on right side of board, mirror this piece horizontally
+        if (kingSquare % 8 > 3) square ^= 7;
+
+        return pieceColor * 384 + pieceType * 64 + square;
+    };
 
     for (u64 entryIdx = 0; entryIdx < BATCH_SIZE; entryIdx++)
     {
@@ -65,31 +74,24 @@ void loadBatch(u64 threadId) {
         batch->stmScores[entryIdx] = dataEntry.stmScore;
         batch->stmResults[entryIdx] = float(dataEntry.stmResult + 1) / 2.0;
         batch->outputBuckets[entryIdx] = (std::popcount(dataEntry.occupancy) - 1) / (32 / NUM_OUTPUT_BUCKETS);
-
-        u32 &numActiveFeatures = dataEntry.whiteToMove 
-                                 ? batch->numActiveFeaturesWhiteStm 
-                                 : batch->numActiveFeaturesBlackStm;
-
-        i16* activeFeatures = dataEntry.whiteToMove 
-                              ? batch->activeFeaturesWhiteStm 
-                              : batch->activeFeaturesBlackStm;
-
-        // HM (Horizontal mirroring)
-        // If our king is on right side of board, mirror all pieces along vertical axis
-        const u8 squareXOR = dataEntry.ourKingSquare % 8 > 3 ? 7 : 0;
-
+        
         while (dataEntry.occupancy > 0)
         {
-            i16 square = poplsb(dataEntry.occupancy) ^ squareXOR;
-            bool isWhitePiece = dataEntry.pieces & 0b1;
-            i16 pieceType = (dataEntry.pieces & 0b1110) >> 1;
+            int square = poplsb(dataEntry.occupancy);
+            int pieceColor = dataEntry.pieces & 0b1;
+            int pieceType = (dataEntry.pieces & 0b1110) >> 1;
 
-            activeFeatures[numActiveFeatures * 2] = entryIdx;
+            int idx = batch->numActiveFeatures * 2;
+            
+            batch->activeFeaturesWhiteStm[idx] = batch->activeFeaturesBlackStm[idx] = entryIdx;
 
-            activeFeatures[numActiveFeatures * 2 + 1] 
-                = !isWhitePiece * 384 + pieceType * 64 + square;
+            batch->activeFeaturesWhiteStm[idx + 1] 
+                = feature(pieceColor, pieceType, square, dataEntry.whiteKingSquare);
 
-            numActiveFeatures++;
+            batch->activeFeaturesBlackStm[idx + 1] 
+                = feature(pieceColor, pieceType, square, dataEntry.blackKingSquare);
+
+            batch->numActiveFeatures++;
             dataEntry.pieces >>= 4;
         }             
     }
