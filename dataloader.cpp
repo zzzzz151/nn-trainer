@@ -61,6 +61,7 @@ void loadBatch(u64 threadId) {
     {
         // HM (Horizontal mirroring)
         // If king on right side of board, mirror this piece horizontally
+        // (along vertical axis)
         if (kingSquare % 8 > 3) square ^= 7;
 
         return pieceColor * 384 + pieceType * 64 + square;
@@ -74,7 +75,7 @@ void loadBatch(u64 threadId) {
         batch->stmScores[entryIdx] = dataEntry.stmScore;
         batch->stmResults[entryIdx] = float(dataEntry.stmResult + 1) / 2.0;
         batch->outputBuckets[entryIdx] = (std::popcount(dataEntry.occupancy) - 1) / (32 / NUM_OUTPUT_BUCKETS);
-        
+
         while (dataEntry.occupancy > 0)
         {
             int square = poplsb(dataEntry.occupancy);
