@@ -62,9 +62,12 @@ static_assert(sizeof(DataEntry) == 32); // 32 bytes
 struct Batch {
     public:
 
-    u32 numActiveFeatures = 0;
-    i16* activeFeatures;
+    u32 numActiveFeaturesWhiteStm = 0;
+    i16* activeFeaturesWhiteStm;
     
+    u32 numActiveFeaturesBlackStm = 0;
+    i16* activeFeaturesBlackStm;
+
     bool* isWhiteStm;
     
     float* stmScores;
@@ -77,7 +80,8 @@ struct Batch {
         // Indices of active features
         // array size is * 2 because the indices are (positionIndex, featureIndex)
         // aka a (numActiveFeatures, 2) matrix
-        activeFeatures = new i16[batchSize * 32 * 2];
+        activeFeaturesWhiteStm = new i16[batchSize * 32 * 2];
+        activeFeaturesBlackStm = new i16[batchSize * 32 * 2];
 
         isWhiteStm = new bool[batchSize];
         stmScores = new float[batchSize];

@@ -55,7 +55,7 @@ void loadBatch(u64 threadId) {
 
     DataEntry dataEntry;
     Batch* batch = &gBatches[threadId];
-    batch->numActiveFeatures = 0;
+    batch->numActiveFeaturesWhiteStm = batch->numActiveFeaturesBlackStm = 0;
 
     for (u64 entryIdx = 0; entryIdx < BATCH_SIZE; entryIdx++)
     {
@@ -66,22 +66,30 @@ void loadBatch(u64 threadId) {
         batch->stmResults[entryIdx] = float(dataEntry.stmResult + 1) / 2.0;
         batch->outputBuckets[entryIdx] = (std::popcount(dataEntry.occupancy) - 1) / (32 / NUM_OUTPUT_BUCKETS);
 
+        u32 &numActiveFeatures = dataEntry.whiteToMove 
+                                 ? batch->numActiveFeaturesWhiteStm 
+                                 : batch->numActiveFeaturesBlackStm;
+
+        i16* activeFeatures = dataEntry.whiteToMove 
+                              ? batch->activeFeaturesWhiteStm 
+                              : batch->activeFeaturesBlackStm;
+
         // HM (Horizontal mirroring)
         // If our king is on right side of board, mirror all pieces along vertical axis
-        u8 mirror = dataEntry.ourKingSquare % 8 > 3 ? 7 : 0;
+        const u8 squareXOR = dataEntry.ourKingSquare % 8 > 3 ? 7 : 0;
 
         while (dataEntry.occupancy > 0)
         {
-            i16 square = poplsb(dataEntry.occupancy) ^ mirror;
+            i16 square = poplsb(dataEntry.occupancy) ^ squareXOR;
             bool isWhitePiece = dataEntry.pieces & 0b1;
             i16 pieceType = (dataEntry.pieces & 0b1110) >> 1;
 
-            batch->activeFeatures[batch->numActiveFeatures * 2] = entryIdx;
+            activeFeatures[numActiveFeatures * 2] = entryIdx;
 
-            batch->activeFeatures[batch->numActiveFeatures * 2 + 1] 
+            activeFeatures[numActiveFeatures * 2 + 1] 
                 = !isWhitePiece * 384 + pieceType * 64 + square;
 
-            batch->numActiveFeatures++;
+            numActiveFeatures++;
             dataEntry.pieces >>= 4;
         }             
     }

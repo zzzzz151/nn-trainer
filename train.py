@@ -93,7 +93,8 @@ if __name__ == "__main__":
 
             with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
                 prediction = net.forward(
-                    batch.features_dense_tensor(), 
+                    batch.features_white_stm_dense_tensor(), 
+                    batch.features_black_stm_dense_tensor(),
                     to_tensor(batch.is_white_stm),
                     to_tensor(batch.output_buckets)
                 )
