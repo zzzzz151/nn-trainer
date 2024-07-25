@@ -11,14 +11,13 @@ import os
 import warnings
 
 if __name__ == "__main__":
-    num_data_entries = int(os.path.getsize(DATA_FILE_NAME) / 32)
-    net = PerspectiveNet768x2().to(device)
+    NUM_DATA_ENTRIES = int(os.path.getsize(DATA_FILE_NAME) / 32)
 
     print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
     print("Net name:", NET_NAME)
-    print("Net arch: (768x2 -> {})x2 -> {}".format(HIDDEN_SIZE, OUTPUT_BUCKETS))
+    print("Net arch: (768x2 -> {})x2 -> {}, horizontally mirrored".format(HIDDEN_SIZE, OUTPUT_BUCKETS))
     print("Superbatches: {} to {} (save net every {})".format(START_SUPERBATCH, END_SUPERBATCH, SAVE_INTERVAL))
-    print("Data entries: {} ({})".format(num_data_entries , DATA_FILE_NAME))
+    print("Data entries: {} ({})".format(NUM_DATA_ENTRIES, DATA_FILE_NAME))
     print("Batch size:", BATCH_SIZE)
     print("Threads:", THREADS)
     print("LR: start {:.20f} multiply by {} every {} superbatches".format(LR, LR_MULTIPLIER, LR_DROP_INTERVAL))
@@ -29,11 +28,9 @@ if __name__ == "__main__":
 
     if CHECKPOINT_TO_LOAD: assert START_SUPERBATCH > 1
 
-    # load dataloader exe/binary
-    dll = "./dataloader/dataloader.dll"
-    so = "./dataloader/dataloader.so"
-    assert os.path.exists(dll) or os.path.exists(so)
-    dataloader = ctypes.CDLL(dll if os.path.exists(dll) else so)
+    # load dataloader
+    assert os.path.exists("./dataloader.dll") or os.path.exists("./dataloader.so")
+    dataloader = ctypes.CDLL("./dataloader.dll" if os.path.exists("./dataloader.dll") else "./dataloader.so")
 
     # define dataloader functions
     dataloader.init.restype = None # void
@@ -47,6 +44,8 @@ if __name__ == "__main__":
         THREADS,
         OUTPUT_BUCKETS
     )
+
+    net = PerspectiveNet768x2().to(device)
 
     # 1 superbatch = 100M positions
     BATCHES_PER_SUPERBATCH = math.ceil(100_000_000.0 / float(BATCH_SIZE))
@@ -94,7 +93,8 @@ if __name__ == "__main__":
 
             with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
                 prediction = net.forward(
-                    batch.features_dense_tensor(), 
+                    batch.features_dense_tensor(True), 
+                    batch.features_dense_tensor(False),
                     to_tensor(batch.is_white_stm),
                     to_tensor(batch.output_buckets)
                 )

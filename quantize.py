@@ -106,6 +106,7 @@ if __name__ == "__main__":
     print("Start pos eval:", eval_quantized("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
     print("e2e4 eval:", eval_quantized("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"))
     print("e2e4 g8f6 eval:", eval_quantized("rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2"))
+    print("Bongcloud eval:", eval_quantized("rnbkqbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKQBNR w KQkq - 0 1"))
 
     # Moves in "r3k2b/6P1/8/1pP5/8/8/4P3/4K2R w Kq b6 0 1"
     FENS = [

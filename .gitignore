@@ -27,6 +27,9 @@ dataloader/convert
 *.bin
 **/*.bin
 
+*.binpack
+**/*.binpack
+
 *.txt
 **/*.txt
 
