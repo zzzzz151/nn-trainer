@@ -7,6 +7,9 @@ class PerspectiveNet768x2(torch.nn.Module):
 
         self.features_to_hidden_white_stm = torch.nn.Linear(768, HIDDEN_SIZE)
         self.features_to_hidden_black_stm = torch.nn.Linear(768, HIDDEN_SIZE)
+
+        self.features_to_hidden_factorizer = torch.nn.Linear(768, HIDDEN_SIZE)
+
         self.hidden_to_out = torch.nn.Linear(HIDDEN_SIZE * 2, OUTPUT_BUCKETS)
 
         # Random weights and biases
@@ -17,6 +20,9 @@ class PerspectiveNet768x2(torch.nn.Module):
 
             self.features_to_hidden_black_stm.weight.uniform_(-0.1, 0.1)
             self.features_to_hidden_black_stm.bias.uniform_(-0.1, 0.1)
+
+            self.features_to_hidden_factorizer.weight.uniform_(-0.1, 0.1)
+            self.features_to_hidden_factorizer.bias.uniform_(-0.1, 0.1)
 
             self.hidden_to_out.weight.uniform_(-0.1, 0.1)
             self.hidden_to_out.bias.uniform_(-0.1, 0.1)
@@ -29,7 +35,10 @@ class PerspectiveNet768x2(torch.nn.Module):
         output_buckets_tensor):
 
         white_hidden = self.features_to_hidden_white_stm(features_white_stm_tensor)
+        white_hidden += self.features_to_hidden_factorizer(features_white_stm_tensor)
+
         black_hidden = self.features_to_hidden_black_stm(features_black_stm_tensor)
+        black_hidden = self.features_to_hidden_factorizer(features_black_stm_tensor)
 
         assert len(features_white_stm_tensor.size()) == len(features_black_stm_tensor.size())
         dim = len(features_white_stm_tensor.size()) - 1
@@ -52,6 +61,9 @@ class PerspectiveNet768x2(torch.nn.Module):
 
         self.features_to_hidden_black_stm.weight.data.clamp_(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS)
         self.features_to_hidden_black_stm.bias.data.clamp_(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS)
+
+        self.features_to_hidden_factorizer.weight.data.clamp_(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS)
+        self.features_to_hidden_factorizer.bias.data.clamp_(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS)
 
         self.hidden_to_out.weight.data.clamp_(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS)
         self.hidden_to_out.bias.data.clamp_(-MAX_WEIGHT_BIAS, MAX_WEIGHT_BIAS)
