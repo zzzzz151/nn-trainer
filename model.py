@@ -63,8 +63,9 @@ class PerspectiveNet768x2(torch.nn.Module):
         stm = fen_split_spaces[-5]
         assert stm in ["w", "b"]
 
-        kings_squares = [None, None] # [is_black_piece]
-        xor = [0, 0]
+        # [is_black_piece]
+        kings_squares = [None, None] 
+        queens_squares = [64, 64]
 
         WHITE = 0
         BLACK = 1
@@ -80,17 +81,36 @@ class PerspectiveNet768x2(torch.nn.Module):
 
                     if char == 'K':
                         kings_squares[WHITE] = square
-                        xor[WHITE] = this_xor
                     elif char == 'k':
                         kings_squares[BLACK] = square
-                        xor[BLACK] = this_xor
+                    elif char == 'Q':
+                        if queens_squares[WHITE] != 64:
+                            queens_squares[WHITE] = 64
+                        else:
+                            queens_squares[WHITE] = square
+                    elif char == 'q':
+                        if queens_squares[BLACK] != 64:
+                            queens_squares[BLACK] = 64
+                        else:
+                            queens_squares[BLACK] = square
 
                     file_idx += 1
 
         assert None not in kings_squares
 
-        features_white_stm_tensor = torch.zeros(768, device=device)
-        features_black_stm_tensor = torch.zeros(768, device=device)
+        def feature(color: int, is_black_piece: int, piece_type: int, square: int):
+            enemy_queen_square = queens_squares[1 - color]
+
+            if kings_squares[color] % 8 > 3:
+                square ^= 7
+
+                if enemy_queen_square != 64:
+                    enemy_queen_square ^= 7
+
+            return INPUT_BUCKETS_MAP[enemy_queen_square] * 768 + is_black_piece * 384 + piece_type * 64 + square
+
+        features_white_stm_tensor = torch.zeros(768 * INPUT_BUCKETS, device=device)
+        features_black_stm_tensor = torch.zeros(768 * INPUT_BUCKETS, device=device)
         num_pieces = 0
 
         for rank_idx, rank in enumerate(fen_split_spaces[0].split('/')):
@@ -103,11 +123,8 @@ class PerspectiveNet768x2(torch.nn.Module):
                     is_black_piece = char.islower()
                     piece_type = {'p': 0, 'n': 1, 'b': 2, 'r': 3, 'q': 4, 'k': 5}[char.lower()]
 
-                    def feature(color: int):
-                        return is_black_piece * 384 + piece_type * 64 + (square ^ xor[color])
-
-                    features_white_stm_tensor[feature(WHITE)] = 1
-                    features_black_stm_tensor[feature(BLACK)] = 1
+                    features_white_stm_tensor[feature(WHITE, is_black_piece, piece_type, square)] = 1
+                    features_black_stm_tensor[feature(BLACK, is_black_piece, piece_type, square)] = 1
 
                     num_pieces += 1
                     file_idx += 1

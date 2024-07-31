@@ -98,8 +98,8 @@ if __name__ == "__main__":
     print("e2e4 g8f6 eval:", eval_quantized("rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2"))
     print("Bongcloud eval:", eval_quantized("rnbkqbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKQBNR w KQkq - 0 1"))
 
-    # Moves in "r3k2b/6P1/8/1pP5/8/8/4P3/4K2R w Kq b6 0 1"
     FENS = [
+        # Moves in "r3k2b/6P1/8/1pP5/8/8/4P3/4K2R w Kq b6 0 1"
         "r3k2b/6P1/1P6/8/8/8/4P3/4K2R b Kq - 0 1",
         "r3k2b/6P1/8/1pP5/8/4P3/8/4K2R b Kq - 0 1",
         "r3k2b/6P1/8/1pP5/4P3/8/8/4K2R b Kq e3 0 1",
@@ -125,7 +125,17 @@ if __name__ == "__main__":
         "r3k2b/6P1/8/1pP4R/8/8/4P3/4K3 b q - 1 1",
         "r3k2b/6P1/7R/1pP5/8/8/4P3/4K3 b q - 1 1",
         "r3k2b/6PR/8/1pP5/8/8/4P3/4K3 b q - 1 1",
-        "r3k2R/6P1/8/1pP5/8/8/4P3/4K3 b q - 0 1"
+        "r3k2R/6P1/8/1pP5/8/8/4P3/4K3 b q - 0 1",
+
+        # Some more positions
+        "4k3/7n/5q2/8/8/6R1/8/4K3 w - - 0 1",
+        "4k3/7n/1q6/8/8/6R1/8/4K3 w - - 0 1",
+        "4k3/7n/1q6/8/8/6R1/8/2K5 w - - 0 1",
+        "4k3/7n/5q2/8/8/6R1/8/2K5 w - - 0 1",
+        "q3k3/7n/5q2/8/8/6R1/8/2K5 w - - 0 1",
+        "4k3/7n/8/2q5/8/6R1/7q/5K2 w - - 0 1",
+        "4k3/7n/8/8/8/6R1/8/5K2 w - - 0 1",
+        "4k3/7n/8/8/8/6R1/8/1K6 w - - 0 1"
     ]
 
     for fen in FENS:
