@@ -3,16 +3,15 @@ import torch
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-NET_NAME = "net768x2-queen-buckets"
+NET_NAME = "net768x2"
 CHECKPOINT_TO_LOAD = None # set to a .pt file to resume training, else set to None
 
 HIDDEN_SIZE = 1024 # The final hidden layer is twice as big
-INPUT_BUCKETS = 5  # Set to 1 if no input buckets
-OUTPUT_BUCKETS = 1 # Set to 1 if no output buckets
+OUTPUT_BUCKETS = 1 # Set to 1 for no output buckets
 
 # 1 superbatch = 100M positions
 START_SUPERBATCH = 1 # set to 1 if not resuming training
-END_SUPERBATCH = 800
+END_SUPERBATCH = 400
 SAVE_INTERVAL = 100 # save net every SAVE_INTERVAL superbatches
 
 DATA_FILE_NAME = "2B.bin" # .bin

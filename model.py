@@ -5,8 +5,8 @@ class PerspectiveNet768x2(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.features_to_hidden_white_stm = torch.nn.Linear(768 * INPUT_BUCKETS, HIDDEN_SIZE)
-        self.features_to_hidden_black_stm = torch.nn.Linear(768 * INPUT_BUCKETS, HIDDEN_SIZE)
+        self.features_to_hidden_white_stm = torch.nn.Linear(768, HIDDEN_SIZE)
+        self.features_to_hidden_black_stm = torch.nn.Linear(768, HIDDEN_SIZE)
         self.hidden_to_out = torch.nn.Linear(HIDDEN_SIZE * 2, OUTPUT_BUCKETS)
 
         # Random weights and biases
