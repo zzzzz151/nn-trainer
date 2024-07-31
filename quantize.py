@@ -52,8 +52,8 @@ if __name__ == "__main__":
 
     with open(out_file_name, "rb") as bin_file:
         # Read quantized features weights
-        features_weights_white_stm = struct.unpack(f'<{768 * HIDDEN_SIZE}h', bin_file.read(768 * HIDDEN_SIZE * 2))
-        features_weights_black_stm = struct.unpack(f'<{768 * HIDDEN_SIZE}h', bin_file.read(768 * HIDDEN_SIZE * 2))
+        features_weights_white_stm = struct.unpack(f'<{768 * INPUT_BUCKETS * HIDDEN_SIZE}h', bin_file.read(768 * INPUT_BUCKETS * HIDDEN_SIZE * 2))
+        features_weights_black_stm = struct.unpack(f'<{768 * INPUT_BUCKETS * HIDDEN_SIZE}h', bin_file.read(768 * INPUT_BUCKETS * HIDDEN_SIZE * 2))
 
         # Read quantized features biases
         features_biases_white_stm = struct.unpack(f'<{HIDDEN_SIZE}h', bin_file.read(HIDDEN_SIZE * 2))
@@ -66,10 +66,10 @@ if __name__ == "__main__":
     # Move quantized features weights to the net
 
     net.features_to_hidden_white_stm.weight.data = torch.tensor(
-        np.array(features_weights_white_stm).reshape(768, HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
+        np.array(features_weights_white_stm).reshape(768 * INPUT_BUCKETS, HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
 
     net.features_to_hidden_black_stm.weight.data = torch.tensor(
-        np.array(features_weights_black_stm).reshape(768, HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
+        np.array(features_weights_black_stm).reshape(768 * INPUT_BUCKETS, HIDDEN_SIZE).T / QA, dtype=torch.float32, device=device)
 
     # Move quantized features biases to the net
 

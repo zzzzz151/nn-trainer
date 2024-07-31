@@ -4,7 +4,7 @@ import torch
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 NET_NAME = "net768x2-queen-buckets"
-CHECKPOINT_TO_LOAD = None # set to a .pt file to resume training, else set to None
+CHECKPOINT_TO_LOAD = "checkpoints/net768x2-queen-buckets-600.pt" # set to a .pt file to resume training, else set to None
 
 HIDDEN_SIZE = 1024 # The final hidden layer is twice as big
 INPUT_BUCKETS = 5  # Set to 1 if no input buckets
