@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     print("Device:", "CPU" if device == torch.device("cpu") else torch.cuda.get_device_name(0))
     print("Net name:", NET_NAME)
-    print("Net arch: (768x2 -> {})x2 -> {}, horizontally mirrored".format(HIDDEN_SIZE, OUTPUT_BUCKETS))
+    print("Net arch: (768x2x{} -> {})x2 -> {}, horizontally mirrored".format(INPUT_BUCKETS, HIDDEN_SIZE, OUTPUT_BUCKETS))
     print("Superbatches: {} to {} (save net every {})".format(START_SUPERBATCH, END_SUPERBATCH, SAVE_INTERVAL))
     print("Data entries: {} ({})".format(NUM_DATA_ENTRIES, DATA_FILE_NAME))
     print("Batch size:", BATCH_SIZE)

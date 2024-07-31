@@ -15,7 +15,7 @@ class Batch(ctypes.Structure):
     ]
 
     def features_dense_tensor(self, white_stm: bool):
-        features_tensor = torch.zeros(BATCH_SIZE, 768, device=device)
+        features_tensor = torch.zeros(BATCH_SIZE, 768 * INPUT_BUCKETS, device=device)
 
         arr = np.ctypeslib.as_array(
             self.active_features_white_stm if white_stm else self.active_features_black_stm,

@@ -7,6 +7,19 @@
 #include <fstream>
 #include <thread>
 
+constexpr std::array<int, 65> INPUT_BUCKETS = {
+//  A  B  C  D  E  F  G  H
+    1, 1, 1, 1, 2, 2, 2, 2, // 0
+    1, 1, 1, 1, 2, 2, 2, 2, // 1
+    1, 1, 1, 1, 2, 2, 2, 2, // 2
+    1, 1, 1, 1, 2, 2, 2, 2, // 3
+    3, 3, 3, 3, 4, 4, 4, 4, // 4
+    3, 3, 3, 3, 4, 4, 4, 4, // 5
+    3, 3, 3, 3, 4, 4, 4, 4, // 6 
+    3, 3, 3, 3, 4, 4, 4, 4, // 7
+    0
+};
+
 // These 6 constants are set in init(), which is called in train.py
 std::string DATA_FILE_NAME;
 u64 DATA_FILE_BYTES = 0;
@@ -57,14 +70,19 @@ void loadBatch(u64 threadId) {
     Batch* batch = &gBatches[threadId];
     batch->numActiveFeatures = 0;
 
-    auto feature = [](int pieceColor, int pieceType, int square, int kingSquare) -> int 
+    auto feature = [](int pieceColor, int pieceType, int square, int kingSquare, int enemyQueenSquare) -> int 
     {
         // HM (Horizontal mirroring)
         // If king on right side of board, mirror this piece horizontally
         // (along vertical axis)
-        if (kingSquare % 8 > 3) square ^= 7;
+        if (kingSquare % 8 > 3) {
+            square ^= 7;
+            
+            if (enemyQueenSquare != 64) 
+                enemyQueenSquare ^= 7;
+        }
 
-        return pieceColor * 384 + pieceType * 64 + square;
+        return INPUT_BUCKETS[enemyQueenSquare] * 768 + pieceColor * 384 + pieceType * 64 + square;
     };
 
     for (u64 entryIdx = 0; entryIdx < BATCH_SIZE; entryIdx++)
@@ -87,10 +105,10 @@ void loadBatch(u64 threadId) {
             batch->activeFeaturesWhiteStm[idx] = batch->activeFeaturesBlackStm[idx] = entryIdx;
 
             batch->activeFeaturesWhiteStm[idx + 1] 
-                = feature(pieceColor, pieceType, square, dataEntry.whiteKingSquare);
+                = feature(pieceColor, pieceType, square, dataEntry.whiteKingSquare, dataEntry.blackQueenSquare);
 
             batch->activeFeaturesBlackStm[idx + 1] 
-                = feature(pieceColor, pieceType, square, dataEntry.blackKingSquare);
+                = feature(pieceColor, pieceType, square, dataEntry.blackKingSquare, dataEntry.whiteQueenSquare);
 
             batch->numActiveFeatures++;
             dataEntry.pieces >>= 4;

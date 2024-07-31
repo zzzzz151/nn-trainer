@@ -49,12 +49,13 @@ struct DataEntry {
     // lsb is piece color, other 3 bits is piece type
     u128 pieces;
 
-    u8 whiteKingSquare, blackKingSquare;
+    u8 whiteKingSquare, 
+       blackKingSquare,
+       whiteQueenSquare,
+       blackQueenSquare;
 
     i16 stmScore;
     i8 stmResult; // -1, 0, 1
-
-    std::array<u8, 2> extra; // padding to ensure 32 bytes
 
 } __attribute__((packed));
 
