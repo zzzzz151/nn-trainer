@@ -43,7 +43,7 @@ if __name__ == "__main__":
         ctypes.c_uint32, # u32 batchSize
         ctypes.c_uint8,  # u8 numThreads 
         ctypes.POINTER(ctypes.c_int), # std::array<int, 65> &inputBucketsMap
-        ctypes.c_bool,    # factorizer
+        ctypes.c_bool,   # factorizer
         ctypes.c_uint8,  # u8 numOutputBuckets
     ]
 
@@ -110,7 +110,6 @@ if __name__ == "__main__":
                 prediction = net.forward(
                     batch.features_dense_tensor(True), 
                     batch.features_dense_tensor(False),
-                    torch.ones((BATCH_SIZE, 64 if FACTORIZER else 32), device=device),
                     to_tensor(batch.is_white_stm),
                     to_tensor(batch.output_buckets)
                 )

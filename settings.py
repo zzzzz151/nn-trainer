@@ -3,7 +3,7 @@ import torch
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-NET_NAME = "net768x2-queen-buckets"
+NET_NAME = "net768x2-queen-buckets-new"
 CHECKPOINT_TO_LOAD = None # set to a .pt file to resume training, else set to None
 
 # Set to input buckets map if using input buckets
