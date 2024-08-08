@@ -1,35 +1,29 @@
 from settings import *
+from feature_transformer import FeatureTransformerSlice
 import torch
 
 class PerspectiveNet768x2(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.features_to_hidden_white_stm = torch.nn.Linear(768 * INPUT_BUCKETS, HIDDEN_SIZE)
-        self.features_to_hidden_black_stm = torch.nn.Linear(768 * INPUT_BUCKETS, HIDDEN_SIZE)
+        #self.features_to_hidden_white_stm = torch.nn.Linear(768 * INPUT_BUCKETS, HIDDEN_SIZE)
+        #self.features_to_hidden_black_stm = torch.nn.Linear(768 * INPUT_BUCKETS, HIDDEN_SIZE)
+
+        self.features_to_hidden_white_stm = FeatureTransformerSlice(768 * INPUT_BUCKETS, HIDDEN_SIZE)
+        self.features_to_hidden_black_stm = FeatureTransformerSlice(768 * INPUT_BUCKETS, HIDDEN_SIZE)
+
         self.hidden_to_out = torch.nn.Linear(HIDDEN_SIZE * 2, OUTPUT_BUCKETS)
-
-        # Random weights and biases
-        torch.manual_seed(42)
-        with torch.no_grad():
-            self.features_to_hidden_white_stm.weight.uniform_(-0.1, 0.1)
-            self.features_to_hidden_white_stm.bias.uniform_(-0.1, 0.1)
-
-            self.features_to_hidden_black_stm.weight.uniform_(-0.1, 0.1)
-            self.features_to_hidden_black_stm.bias.uniform_(-0.1, 0.1)
-
-            self.hidden_to_out.weight.uniform_(-0.1, 0.1)
-            self.hidden_to_out.bias.uniform_(-0.1, 0.1)
 
     # The arguments should be dense tensors and not sparse tensors, as the former are way faster
     def forward(self, 
         features_white_stm_tensor, 
-        features_black_stm_tensor, 
+        features_black_stm_tensor,
+        features_values_tensor, 
         is_white_stm_tensor, 
         output_buckets_tensor):
 
-        white_hidden = self.features_to_hidden_white_stm(features_white_stm_tensor)
-        black_hidden = self.features_to_hidden_black_stm(features_black_stm_tensor)
+        white_hidden = self.features_to_hidden_white_stm(features_white_stm_tensor, features_values_tensor)
+        black_hidden = self.features_to_hidden_black_stm(features_black_stm_tensor, features_values_tensor)
 
         assert len(features_white_stm_tensor.size()) == len(features_black_stm_tensor.size())
         dim = len(features_white_stm_tensor.size()) - 1

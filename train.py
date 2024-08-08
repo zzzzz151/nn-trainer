@@ -10,6 +10,9 @@ import sys
 import os
 import warnings
 
+torch.manual_seed(42)
+torch.set_float32_matmul_precision('medium')
+
 if __name__ == "__main__":
     NUM_DATA_ENTRIES = int(os.path.getsize(DATA_FILE_NAME) / 32)
 
@@ -107,6 +110,7 @@ if __name__ == "__main__":
                 prediction = net.forward(
                     batch.features_dense_tensor(True), 
                     batch.features_dense_tensor(False),
+                    torch.ones((BATCH_SIZE, 64 if FACTORIZER else 32), device=device),
                     to_tensor(batch.is_white_stm),
                     to_tensor(batch.output_buckets)
                 )
@@ -148,7 +152,7 @@ if __name__ == "__main__":
                     print(log)
                 else:
                     sys.stdout.write(log)
-                    sys.stdout.flush()  
+                    sys.stdout.flush()
 
         # Save checkpoint as .pt (pytorch file)
         if (superbatch_num - START_SUPERBATCH + 1) % SAVE_INTERVAL == 0 or superbatch_num == END_SUPERBATCH:

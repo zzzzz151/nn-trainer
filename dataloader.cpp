@@ -3,12 +3,11 @@
 #include "dataloader.hpp"
 #include <iostream>
 #include <vector>
-#include <algorithm>
 #include <sstream>
 #include <fstream>
 #include <thread>
 
-// These 9 constants are set in init(), which is called in train.py
+// These 10 constants are set in init(), which is called in train.py
 std::string DATA_FILE_NAME = "";
 u64 DATA_FILE_BYTES = 0;
 u64 NUM_DATA_ENTRIES = 0;
@@ -18,10 +17,13 @@ std::array<int, 65> INPUT_BUCKETS_MAP = {};
 int NUM_INPUT_BUCKETS = 0;
 bool FACTORIZER = false;
 int NUM_OUTPUT_BUCKETS = 0;
+int MAX_ACTIVE_FEATURES = 0; // 32 usually, but 64 if factorizer
 
 std::vector<Batch> gBatches; // NUM_THREADS batches
 u64 gNextBatchIdx = 0; // 0 to NUM_THREADS-1
 u64 gDataFilePos = 0;
+
+int* minusOnes;
 
 extern "C" API void init(
     const char* dataFileName, 
@@ -38,6 +40,7 @@ extern "C" API void init(
     NUM_INPUT_BUCKETS = 1 + *std::max_element(INPUT_BUCKETS_MAP.begin(), INPUT_BUCKETS_MAP.end());
     FACTORIZER = factorizer;
     NUM_OUTPUT_BUCKETS = numOutputBuckets;
+    MAX_ACTIVE_FEATURES = FACTORIZER ? 64 : 32;
 
     // open file in binary mode and at the end
     std::ifstream dataFile(DATA_FILE_NAME, std::ios::binary | std::ios::ate);
@@ -49,7 +52,11 @@ extern "C" API void init(
     assert(NUM_DATA_ENTRIES % BATCH_SIZE == 0);
 
     for (u64 i = 0; i < NUM_THREADS; i++)
-        gBatches.push_back(Batch(BATCH_SIZE));
+        gBatches.push_back(Batch(BATCH_SIZE, MAX_ACTIVE_FEATURES));
+
+    minusOnes = new int[BATCH_SIZE * MAX_ACTIVE_FEATURES];
+    for (u32 i = 0; i < BATCH_SIZE * MAX_ACTIVE_FEATURES; i++)
+        minusOnes[i] = -1;
 }
 
 void loadBatch(u64 threadId) {
@@ -68,7 +75,10 @@ void loadBatch(u64 threadId) {
 
     DataEntry dataEntry;
     Batch* batch = &gBatches[threadId];
-    batch->numActiveFeatures = 0;
+
+    // Reset all features to -1
+    std::copy(minusOnes, minusOnes + BATCH_SIZE * MAX_ACTIVE_FEATURES, batch->activeFeaturesWhiteStm);
+    std::copy(minusOnes, minusOnes + BATCH_SIZE * MAX_ACTIVE_FEATURES, batch->activeFeaturesBlackStm);
 
     auto feature = [](int pieceColor, int pieceType, int square, int kingSquare, int enemyQueenSquare) -> int 
     {
@@ -94,35 +104,33 @@ void loadBatch(u64 threadId) {
         batch->stmResults[entryIdx] = float(dataEntry.stmResult + 1) / 2.0;
         batch->outputBuckets[entryIdx] = (std::popcount(dataEntry.occupancy) - 1) / (32 / NUM_OUTPUT_BUCKETS);
 
+        int piecesSeen = 0;
+
         while (dataEntry.occupancy > 0)
         {
             int square = poplsb(dataEntry.occupancy);
             int pieceColor = dataEntry.pieces & 0b1;
             int pieceType = (dataEntry.pieces & 0b1110) >> 1;
 
-            int idx = batch->numActiveFeatures * 2;
-            
-            batch->activeFeaturesWhiteStm[idx] = batch->activeFeaturesBlackStm[idx] = entryIdx;
+            const int idx = entryIdx * MAX_ACTIVE_FEATURES + piecesSeen;
 
-            batch->activeFeaturesWhiteStm[idx + 1] 
+            batch->activeFeaturesWhiteStm[idx]
                 = feature(pieceColor, pieceType, square, dataEntry.whiteKingSquare, dataEntry.blackQueenSquare);
 
-            batch->activeFeaturesBlackStm[idx + 1] 
+            batch->activeFeaturesBlackStm[idx]
                 = feature(pieceColor, pieceType, square, dataEntry.blackKingSquare, dataEntry.whiteQueenSquare);
 
             if (FACTORIZER) {
-                idx += 2;
-
-                batch->activeFeaturesWhiteStm[idx] = batch->activeFeaturesBlackStm[idx] = entryIdx;
-
                 batch->activeFeaturesWhiteStm[idx + 1] 
-                    = batch->activeFeaturesWhiteStm[idx - 1] % 768 + 768 * NUM_INPUT_BUCKETS;
+                    = batch->activeFeaturesWhiteStm[idx] % 768 + 768 * NUM_INPUT_BUCKETS;
 
                 batch->activeFeaturesBlackStm[idx + 1] 
-                    = batch->activeFeaturesBlackStm[idx - 1] % 768 + 768 * NUM_INPUT_BUCKETS;
+                    = batch->activeFeaturesBlackStm[idx] % 768 + 768 * NUM_INPUT_BUCKETS;
+
+                piecesSeen++;
             }
 
-            batch->numActiveFeatures += 1 + FACTORIZER;
+            piecesSeen++;
             dataEntry.pieces >>= 4;
         }             
     }

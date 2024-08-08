@@ -7,6 +7,7 @@
 #include <cassert>
 #include <string>
 #include <bit>
+#include <algorithm>
 
 using u8 = uint8_t;
 using u16 = uint16_t;
@@ -64,10 +65,10 @@ static_assert(sizeof(DataEntry) == 32); // 32 bytes
 struct Batch {
     public:
 
-    u32 numActiveFeatures= 0;
+    int numActiveFeatures= 0;
 
-    i16* activeFeaturesWhiteStm;    
-    i16* activeFeaturesBlackStm;
+    int* activeFeaturesWhiteStm;    
+    int* activeFeaturesBlackStm;
 
     bool* isWhiteStm;
     
@@ -76,13 +77,11 @@ struct Batch {
 
     u8* outputBuckets;
 
-    Batch(u32 batchSize)
+    Batch(u32 batchSize, u32 maxActiveFeatures)
     {
-        // Indices of active features
-        // array size is * 2 because the indices are (positionIndex, featureIndex)
-        // aka a (numActiveFeatures, 2) matrix
-        activeFeaturesWhiteStm = new i16[batchSize * 64 * 2];
-        activeFeaturesBlackStm = new i16[batchSize * 64 * 2];
+        // Indices of active features (a position has max 32 active features)
+        activeFeaturesWhiteStm = new int[batchSize * maxActiveFeatures];
+        activeFeaturesBlackStm = new int[batchSize * maxActiveFeatures];
 
         isWhiteStm = new bool[batchSize];
         stmScores = new float[batchSize];
