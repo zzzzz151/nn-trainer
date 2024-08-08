@@ -35,7 +35,7 @@ class PerspectiveNet768x2(torch.nn.Module):
         dim = len(features_white_stm_tensor.size()) - 1
 
         # stm accumulator first
-        hidden_layer = is_white_stm_tensor * torch.cat([white_hidden, black_hidden], dim=dim)
+        hidden_layer  =  is_white_stm_tensor * torch.cat([white_hidden, black_hidden], dim=dim)
         hidden_layer += ~is_white_stm_tensor * torch.cat([black_hidden, white_hidden], dim=dim)
 
         # SCReLU activation

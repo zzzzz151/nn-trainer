@@ -2,41 +2,41 @@
 
 #include "dataloader.hpp"
 #include <iostream>
-#include <sstream>
 #include <vector>
+#include <algorithm>
+#include <sstream>
 #include <fstream>
 #include <thread>
 
-constexpr std::array<int, 65> INPUT_BUCKETS = {
-//  A  B  C  D  E  F  G  H
-    1, 1, 1, 1, 2, 2, 2, 2, // 0
-    1, 1, 1, 1, 2, 2, 2, 2, // 1
-    1, 1, 1, 1, 2, 2, 2, 2, // 2
-    1, 1, 1, 1, 2, 2, 2, 2, // 3
-    3, 3, 3, 3, 4, 4, 4, 4, // 4
-    3, 3, 3, 3, 4, 4, 4, 4, // 5
-    3, 3, 3, 3, 4, 4, 4, 4, // 6 
-    3, 3, 3, 3, 4, 4, 4, 4, // 7
-    0
-};
-
-// These 6 constants are set in init(), which is called in train.py
-std::string DATA_FILE_NAME;
+// These 9 constants are set in init(), which is called in train.py
+std::string DATA_FILE_NAME = "";
 u64 DATA_FILE_BYTES = 0;
 u64 NUM_DATA_ENTRIES = 0;
 u64 BATCH_SIZE = 0;
 u64 NUM_THREADS = 0;
-u8 NUM_OUTPUT_BUCKETS = 0;
+std::array<int, 65> INPUT_BUCKETS_MAP = {};
+int NUM_INPUT_BUCKETS = 0;
+bool FACTORIZER = false;
+int NUM_OUTPUT_BUCKETS = 0;
 
 std::vector<Batch> gBatches; // NUM_THREADS batches
 u64 gNextBatchIdx = 0; // 0 to NUM_THREADS-1
 u64 gDataFilePos = 0;
 
-extern "C" API void init(const char* dataFileName, u32 batchSize, u8 numThreads, u8 numOutputBuckets)
+extern "C" API void init(
+    const char* dataFileName, 
+    u32 batchSize, 
+    u8 numThreads, 
+    std::array<int, 65> &inputBucketsMap,
+    bool factorizer,
+    u8 numOutputBuckets)
 {
     DATA_FILE_NAME = (std::string)dataFileName;
     BATCH_SIZE = batchSize;
     NUM_THREADS = numThreads;
+    INPUT_BUCKETS_MAP = inputBucketsMap;
+    NUM_INPUT_BUCKETS = 1 + *std::max_element(INPUT_BUCKETS_MAP.begin(), INPUT_BUCKETS_MAP.end());
+    FACTORIZER = factorizer;
     NUM_OUTPUT_BUCKETS = numOutputBuckets;
 
     // open file in binary mode and at the end
@@ -82,7 +82,7 @@ void loadBatch(u64 threadId) {
                 enemyQueenSquare ^= 7;
         }
 
-        return INPUT_BUCKETS[enemyQueenSquare] * 768 + pieceColor * 384 + pieceType * 64 + square;
+        return INPUT_BUCKETS_MAP[enemyQueenSquare] * 768 + pieceColor * 384 + pieceType * 64 + square;
     };
 
     for (u64 entryIdx = 0; entryIdx < BATCH_SIZE; entryIdx++)
@@ -110,7 +110,19 @@ void loadBatch(u64 threadId) {
             batch->activeFeaturesBlackStm[idx + 1] 
                 = feature(pieceColor, pieceType, square, dataEntry.blackKingSquare, dataEntry.whiteQueenSquare);
 
-            batch->numActiveFeatures++;
+            if (FACTORIZER) {
+                idx += 2;
+
+                batch->activeFeaturesWhiteStm[idx] = batch->activeFeaturesBlackStm[idx] = entryIdx;
+
+                batch->activeFeaturesWhiteStm[idx + 1] 
+                    = batch->activeFeaturesWhiteStm[idx - 1] % 768 + 768 * NUM_INPUT_BUCKETS;
+
+                batch->activeFeaturesBlackStm[idx + 1] 
+                    = batch->activeFeaturesBlackStm[idx - 1] % 768 + 768 * NUM_INPUT_BUCKETS;
+            }
+
+            batch->numActiveFeatures += 1 + FACTORIZER;
             dataEntry.pieces >>= 4;
         }             
     }

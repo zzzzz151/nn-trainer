@@ -4,9 +4,9 @@ import torch
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 NET_NAME = "net768x2-queen-buckets"
-CHECKPOINT_TO_LOAD = "checkpoints/net768x2-queen-buckets-600.pt" # set to a .pt file to resume training, else set to None
+CHECKPOINT_TO_LOAD = None # set to a .pt file to resume training, else set to None
 
-# Set to zeros if no input buckets
+# Set to input buckets map if using input buckets
 INPUT_BUCKETS_MAP = [
 #   A  B  C  D  E  F  G  H
     1, 1, 1, 1, 2, 2, 2, 2, # 0
@@ -20,14 +20,18 @@ INPUT_BUCKETS_MAP = [
     0
 ]
 
+# Uncomment this line if not using input buckets
+#INPUT_BUCKETS_MAP = [0 for _ in range(65)]
+
 HIDDEN_SIZE = 1024 # The final hidden layer is twice as big
-INPUT_BUCKETS = max(INPUT_BUCKETS_MAP) + 1
+FACTORIZER = False # Set to False if no input buckets
+INPUT_BUCKETS = max(INPUT_BUCKETS_MAP) + 1 + FACTORIZER
 OUTPUT_BUCKETS = 1 # Set to 1 if no output buckets
 
 # 1 superbatch = 100M positions
 START_SUPERBATCH = 1 # set to 1 if not resuming training
-END_SUPERBATCH = 800
-SAVE_INTERVAL = 100 # save net every SAVE_INTERVAL superbatches
+END_SUPERBATCH = 400
+SAVE_INTERVAL = 40 # save net every SAVE_INTERVAL superbatches
 
 DATA_FILE_NAME = "2B.bin" # .bin
 BATCH_SIZE = 16384
@@ -45,7 +49,8 @@ MAX_WEIGHT_BIAS = 2.0
 assert NET_NAME != ""
 if CHECKPOINT_TO_LOAD: assert os.path.exists(CHECKPOINT_TO_LOAD)
 assert HIDDEN_SIZE > 0
-assert INPUT_BUCKETS >= 1
+if not FACTORIZER: assert INPUT_BUCKETS >= 1
+if FACTORIZER: assert INPUT_BUCKETS - FACTORIZER > 1
 assert OUTPUT_BUCKETS >= 1
 if not CHECKPOINT_TO_LOAD: assert START_SUPERBATCH == 1
 assert END_SUPERBATCH >= START_SUPERBATCH

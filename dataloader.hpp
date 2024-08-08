@@ -81,8 +81,8 @@ struct Batch {
         // Indices of active features
         // array size is * 2 because the indices are (positionIndex, featureIndex)
         // aka a (numActiveFeatures, 2) matrix
-        activeFeaturesWhiteStm = new i16[batchSize * 32 * 2];
-        activeFeaturesBlackStm = new i16[batchSize * 32 * 2];
+        activeFeaturesWhiteStm = new i16[batchSize * 64 * 2];
+        activeFeaturesBlackStm = new i16[batchSize * 64 * 2];
 
         isWhiteStm = new bool[batchSize];
         stmScores = new float[batchSize];

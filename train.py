@@ -32,16 +32,28 @@ if __name__ == "__main__":
     assert os.path.exists("./dataloader.dll") or os.path.exists("./dataloader.so")
     dataloader = ctypes.CDLL("./dataloader.dll" if os.path.exists("./dataloader.dll") else "./dataloader.so")
 
-    # define dataloader functions
-    dataloader.init.restype = None # void
-    dataloader.init.argtypes = [ctypes.c_char_p, ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8]
+    dataloader.init.restype = None # define dataloader's init() return type (void)
+
+    # define dataloader's init() arguments
+    dataloader.init.argtypes = [
+        ctypes.c_char_p, # const char* dataFileName 
+        ctypes.c_uint32, # u32 batchSize
+        ctypes.c_uint8,  # u8 numThreads 
+        ctypes.POINTER(ctypes.c_int), # std::array<int, 65> &inputBucketsMap
+        ctypes.c_bool,    # factorizer
+        ctypes.c_uint8,  # u8 numOutputBuckets
+    ]
+
+    # define dataloader's nextBatch() return type (Batch*)
     dataloader.nextBatch.restype = ctypes.POINTER(Batch)
 
-    # init dataloader
+    # init dataloader by calling its init() function
     dataloader.init(
         ctypes.c_char_p(DATA_FILE_NAME.encode('utf-8')),
         BATCH_SIZE, 
         THREADS,
+        (ctypes.c_int * 65)(*INPUT_BUCKETS_MAP),
+        FACTORIZER,
         OUTPUT_BUCKETS
     )
 
